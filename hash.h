@@ -3,12 +3,16 @@
 
 #include <openssl/ripemd.h>
 
-struct hash {
-    unsigned char md[RIPEMD160_DIGEST_LENGTH];
-};
+#define DIGEST_LENGTH RIPEMD160_DIGEST_LENGTH
 
-void hash_buffer(struct hash *, void *, int);
-int hash_file(struct hash *, char *);
-char *base64(void *, int);
+/// type definitions
+typedef struct hash {
+    unsigned char md[DIGEST_LENGTH];
+} hash;
+
+void hash_buffer_digest(hash *, void *, int);
+int hash_file_digest(hash *, char *);
+char *hash_base64(void *, int);
+char *hash_digest_base64(hash *);
 
 #endif

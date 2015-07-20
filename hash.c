@@ -6,15 +6,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-// hash_buffer takes a reference to an already-allocated hash, and populates it
-// with the message digest computed from data in buf
-void hash_buffer(struct hash *hash, void *buf, int buf_length){
+// hash_buffer_digest takes a reference to an already-allocated hash, and
+// populates it with the message digest computed from data in buf
+void hash_buffer_digest(hash *hash, void *buf, int buf_length){
     RIPEMD160((unsigned char *) buf, buf_length, hash->md);
 }
 
-// hash_file computes the message digest of the file at the given path
+// hash_file_digest computes the message digest of the file at the given path
 // returns 0 on success, -1 on error
-int hash_file(struct hash *hash, char *path){
+int hash_file_digest(hash *hash, char *path){
     struct stat st;
     if (stat(path, &st)); //error
     if (!S_ISREG(st.st_mode)); //error
@@ -35,7 +35,7 @@ int hash_file(struct hash *hash, char *path){
 }
 
 // base64 outputs base64-encoded values as per rfc4648
-char *base64(void *buf, int buf_length){
+char *hash_base64(void *buf, int buf_length){
     // output buffer needs to be divisible by 4, plus one extra byte for null-
     // termination
     int length = (4 * ((buf_length + 2) / 3)) + 1;
@@ -63,4 +63,8 @@ char *base64(void *buf, int buf_length){
         j += 4;
     }
     return out;
+}
+
+char *hash_digest_base64(hash *hash){
+    return hash_base64(hash->md, DIGEST_LENGTH);
 }
