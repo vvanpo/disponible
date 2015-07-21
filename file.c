@@ -3,6 +3,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -102,7 +103,7 @@ int read_table_file(files *files){
     if (stat("files", &st)){
         if (errno == ENOENT){
             // if not, call write_table_file() to create an empty 'files' file
-            if (write_table_file(NULL)) return -1;
+            if (write_table_file(files)) return -1;
             return 0;
         }
         else ; //error
@@ -151,6 +152,28 @@ int read_table_file(files *files){
 
 // write_table_file creates or overwrites the local file table
 int write_table_file(files *files){
+    if (unlink("files~") == -1)
+        if (errno != ENOENT); //error
+    int fd = open("files~", O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if (fd == -1); //error
+    for (int i = 0; files->list[i]; i++){
+        int length;
+        char *line = hash_digest_base64(&files->list[i]->hash);
+        int hash_length = strlen(line);
+        length = hash_length + strlen(files->list[i]->path) +
+            (sizeof(char) * 2);
+        line = realloc(line, length);
+        if (!line); //error
+        line[hash_length] = ' ';
+        strcpy(line + hash_length + 1, files->list[i]->path);
+        line[length - 1] = '\n';
+        int ret = write(fd, line, length);
+        if (ret == -1 || ret < length); //error
+        free(line);
+    }
+    if (fsync(fd)); //error
+    if (close(fd)); //error
+    if (rename("files~", "files")); //error
     return 0;
 }
 
@@ -161,4 +184,5 @@ int main(int argc, char **argv){
     files *files = create_files();
     read_table_file(files);
     struct file* file = add_path(files, "dht.txt");
+    write_table_file(files);
 }

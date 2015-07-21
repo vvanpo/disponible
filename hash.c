@@ -31,6 +31,7 @@ int hash_file_digest(hash *hash, char *path){
         if (!RIPEMD160_Update(&c, buf, ret)); //error
     } while (ret > 0);
     if (ret == -1); //error
+    free(buf);
     if (!RIPEMD160_Final(hash->md, &c)); //error
     return 0;
 }
