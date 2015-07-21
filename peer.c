@@ -1,5 +1,5 @@
 /// implementing header
-//#include "peer.h"
+#include "peer.h"
 
 #include <stdlib.h>
 #include "hash.h"
@@ -20,17 +20,6 @@ struct peer {
     //TODO: known file list for this node
     struct peer *next;
     struct peer *prev;
-};
-struct peers {
-    // peers are sorted into the buckets that correspond with their distance
-    // a peer is sorted into bucket n if 2^n <= distance(peer) < 2^(n+1)
-    // peers are sorted within the bucket according to last activity and uptime
-    int num_buckets;
-    // peers per bucket
-    int bucket_size;
-    struct peer **buckets;
-    //TODO: remote file table (with hashes close to this node) with pointers to
-    // known peers
 };
 
 /// static function declarations
@@ -61,3 +50,7 @@ int add_peer(struct peers *peers, struct peer *peer){
     return 0;
 }
 
+// read_peer_table loads the local peer table and updates peers
+int read_peer_table(struct peers *peers){
+    return 0;
+}

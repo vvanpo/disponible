@@ -1,5 +1,5 @@
 /// implementing header
-//#include "file.h"
+#include "file.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -18,10 +18,6 @@ struct file {
     // path needs to be malloc'ed (no string literals), as remove_file frees it
     char *path;
 };
-// simple list of files for now, implement hash table later
-typedef struct files {
-    struct file **list;
-} files;
 
 /// static function declarations
 static files *create_files();

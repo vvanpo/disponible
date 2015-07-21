@@ -1,7 +1,5 @@
 
-#include <stdio.h>
-
 int main(int argc, char **argv){
-    //struct self *self = self_read_local();
+    struct self *self = self_load_config();
     return 0;
 }
