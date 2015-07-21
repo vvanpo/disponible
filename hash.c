@@ -9,13 +9,13 @@
 
 // hash_digest takes a reference to an already-allocated hash, and
 // populates it with the message digest computed from data in buf
-void hash_digest(hash *hash, void *buf, int buf_length){
-    RIPEMD160((unsigned char *) buf, buf_length, hash->md);
+void hash_digest(hash hash, void *buf, int buf_length){
+    RIPEMD160((unsigned char *) buf, buf_length, hash);
 }
 
 // hash_file_digest computes the message digest of the file at the given path
 // returns 0 on success, -1 on error
-int hash_file_digest(hash *hash, char *path){
+int hash_file_digest(hash hash, char *path){
     struct stat st;
     if (stat(path, &st)); //error
     if (!S_ISREG(st.st_mode)); //error
@@ -32,7 +32,7 @@ int hash_file_digest(hash *hash, char *path){
     } while (ret > 0);
     if (ret == -1); //error
     free(buf);
-    if (!RIPEMD160_Final(hash->md, &c)); //error
+    if (!RIPEMD160_Final(hash, &c)); //error
     return 0;
 }
 
@@ -102,6 +102,6 @@ unsigned char *hash_base64_decode(char *buf, int *out_length){
 }
 
 // hash_digest_base64 returns the base64 encoded hash value
-char *hash_digest_base64(hash *hash){
-    return hash_base64_encode(hash->md, DIGEST_LENGTH);
+char *hash_digest_base64(hash hash){
+    return hash_base64_encode(hash, DIGEST_LENGTH);
 }

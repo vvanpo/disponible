@@ -29,8 +29,8 @@ static int add_file(files *, struct file *);
 static int remove_file(files *, struct file *);
 static void remove_all_files(files *);
 static struct file *add_path(files *, char *);
-static int read_table_file(files *);
-static int write_table_file(files *);
+static int read_file_table(files *);
+static int write_file_table(files *);
 
 // create_files initializes a file list
 files *create_files(){
@@ -90,20 +90,20 @@ struct file *add_path(files *files, char *path){
     struct file *file = malloc(sizeof(struct file));
     file->path = malloc(sizeof(char) * (strlen(path) + 1));
     strcpy(file->path, path);
-    hash_file_digest(&file->hash, path);
+    hash_file_digest(file->hash, path);
     if (!add_file(files, file)); //error
     return file;
 }
 
 // read_table reads the local file table and populates a new file tree
-int read_table_file(files *files){
+int read_file_table(files *files){
     remove_all_files(files);
     // check if the local file table exists
     struct stat st;
     if (stat("files", &st)){
         if (errno == ENOENT){
-            // if not, call write_table_file() to create an empty 'files' file
-            if (write_table_file(files)) return -1;
+            // if not, call write_file_table() to create an empty 'files' file
+            if (write_file_table(files)) return -1;
             return 0;
         }
         else ; //error
@@ -132,9 +132,7 @@ int read_table_file(files *files){
                 unsigned char *hash = hash_base64_decode(encoded_hash,
                         &hash_length);
                 free(encoded_hash);
-                //TODO: should really be a separate function in hash.c, to
-                // encapsulate the hash struct
-                memcpy(file->hash.md, hash, hash_length);
+                memcpy(file->hash, hash, hash_length);
                 free(hash);
                 file->path = calloc(i - path_i + 1, sizeof(char));
                 if (!file->path); //error
@@ -150,15 +148,15 @@ int read_table_file(files *files){
     return 0;
 }
 
-// write_table_file creates or overwrites the local file table
-int write_table_file(files *files){
+// write_file_table creates or overwrites the local file table
+int write_file_table(files *files){
     if (unlink("files~") == -1)
         if (errno != ENOENT); //error
     int fd = open("files~", O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd == -1); //error
     for (int i = 0; files->list[i]; i++){
         int length;
-        char *line = hash_digest_base64(&files->list[i]->hash);
+        char *line = hash_digest_base64(files->list[i]->hash);
         int hash_length = strlen(line);
         length = hash_length + strlen(files->list[i]->path) +
             (sizeof(char) * 2);
@@ -182,7 +180,7 @@ int write_table_file(files *files){
 #include <stdio.h>
 int main(int argc, char **argv){
     files *files = create_files();
-    read_table_file(files);
+    read_file_table(files);
     struct file* file = add_path(files, "dht.txt");
-    write_table_file(files);
+    write_file_table(files);
 }

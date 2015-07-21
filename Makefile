@@ -1,9 +1,10 @@
 CC=cc
 CFLAGS=-g -Wall -lcrypto
-OBJ=file.o hash.o
+DEPS=file.h hash.h peer.h self.h
+OBJ=file.o hash.o peer.o self.o
 NAME=disp
 
-%.o: %.c
+%.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 $(NAME): $(OBJ)
