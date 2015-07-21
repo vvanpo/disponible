@@ -10,7 +10,7 @@
 // hash_digest takes a reference to an already-allocated hash, and
 // populates it with the message digest computed from data in buf
 void hash_digest(hash hash, void *buf, int buf_length){
-    RIPEMD160((unsigned char *) buf, buf_length, hash);
+    RIPEMD160((byte *) buf, buf_length, hash);
 }
 
 // hash_file_digest computes the message digest of the file at the given path
@@ -45,12 +45,12 @@ char *hash_base64_encode(void *buf, int buf_length){
     if (!out); //error
     out[length - 1] = '\0';
     for (int i = 0, j = 0; i < buf_length; i += 3){
-        unsigned int grp = ((unsigned char *) buf)[i] << 16;
-        if (buf_length - i > 1) grp += ((unsigned char *) buf)[i + 1] << 8;
-        if (buf_length - i > 2) grp += ((unsigned char *) buf)[i + 2];
+        unsigned int grp = ((byte *) buf)[i] << 16;
+        if (buf_length - i > 1) grp += ((byte *) buf)[i + 1] << 8;
+        if (buf_length - i > 2) grp += ((byte *) buf)[i + 2];
         for (int k = 0; k < 4; k++){
             int n = (grp & (0x3f << (18 - k * 6))) >> (18 - k * 6);
-            unsigned char c;
+            byte c;
             if (n <= 25) c = n + 'A';
             else if (n <= 51) c = n - 26 + 'a';
             else if (n <= 61) c = n - 52 + '0';
@@ -71,7 +71,7 @@ char *hash_base64_encode(void *buf, int buf_length){
 // the decoded output as well as updating the out_length reference
 //TODO: does not handle concatenated base64 streams delineated with padding
 // characters
-unsigned char *hash_base64_decode(char *buf, int *out_length){
+byte *hash_base64_decode(char *buf, int *out_length){
     // determine length of output buffer first
     int buf_length = strlen(buf);
     if (buf_length % 4); //error invalid format
@@ -79,7 +79,7 @@ unsigned char *hash_base64_decode(char *buf, int *out_length){
     if (!buf_length) return NULL;
     if (buf[buf_length - 1] == '=') *out_length -= 1;
     if (buf[buf_length - 2] == '=') *out_length -= 1;
-    unsigned char *out = malloc(sizeof(unsigned char) * *out_length);
+    byte *out = malloc(sizeof(byte) * *out_length);
     for (int i = 0, j = 0; i < buf_length; i += 4){
         int grp = 0;
         for (int k = 0; k < 4; k++){
@@ -94,7 +94,7 @@ unsigned char *hash_base64_decode(char *buf, int *out_length){
             grp += n << (18 - k * 6);
         }
         for (int k = 0; k < 3 && k + j < *out_length; k++){
-            out[k + j] = (unsigned char) (0xff & (grp >> (16 - k * 8)));
+            out[k + j] = (byte) (0xff & (grp >> (16 - k * 8)));
         }
         j += 3;
     }

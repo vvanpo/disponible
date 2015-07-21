@@ -3,18 +3,19 @@
 
 #include <stdlib.h>
 #include "hash.h"
+#include "util.h"
 
 /// type definitions
 struct address {
     char *fqdn;
     enum { ipv4, ipv6 } ip_version;
-    unsigned char ip[16];
+    byte ip[16];
     int udp_port;
     int tcp_port;
 };
 struct peer {
     hash fingerprint;
-    unsigned char *public_key;
+    byte *public_key;
     struct address address;
     //TODO: known file list for this node
     struct peer *next;
@@ -34,12 +35,11 @@ struct peers {
 
 /// static function declarations
 static struct peers *create_peer_list();
-static struct peer *bucket_lookup(struct peers *, unsigned char *);
+static struct peer *bucket_lookup(struct peers *, byte *);
 static int add_peer(struct peers *, struct peer *);
 static int remove_peer(struct peers *, struct peer *);
 static int read_peer_table(struct peers *);
 static int write_peer_table(struct peers *);
-static unsigned char *distance(unsigned char *, unsigned char *);
 
 // create_peer_list initializes a struct peers object
 struct peers *create_peer_list(){
@@ -52,21 +52,12 @@ struct peers *create_peer_list(){
 }
 
 // bucket_lookup returns the head of the list of the bucket corresponding to key
-struct peer *bucket_lookup(struct peers *peers, unsigned char *key){
+struct peer *bucket_lookup(struct peers *peers, byte *key){
     return NULL;
 }
 
 // add_peer adds a peer to its respective bucket
 int add_peer(struct peers *peers, struct peer *peer){
     return 0;
-}
-
-// distance computes the distance metric between 2 keys
-unsigned char *distance(unsigned char *a, unsigned char *b){
-    unsigned char d[DIGEST_LENGTH];
-    for (int i = 0; i < DIGEST_LENGTH; i++){
-        d[i] = a[i] ^ b[i];
-    }
-    return d;
 }
 

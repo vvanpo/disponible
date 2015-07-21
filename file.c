@@ -175,12 +175,3 @@ int write_file_table(files *files){
     return 0;
 }
 
-
-///// for tests
-#include <stdio.h>
-int main(int argc, char **argv){
-    files *files = create_files();
-    read_file_table(files);
-    struct file* file = add_path(files, "dht.txt");
-    write_file_table(files);
-}
