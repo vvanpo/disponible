@@ -43,9 +43,8 @@ files *create_files(){
 // free_files removes all file objects from files and frees all associated
 // resources
 void free_files(files *files){
-    if (files->list)
-        for (int i; files->list[i]; i++)
-            free(files->list[i]);
+    for (int i = 0; files->list[i]; i++)
+        free(files->list[i]);
     free(files->list);
     free(files);
     return;
@@ -119,7 +118,6 @@ int read_table_file(files *files){
     if (ret == -1); //error
     for (int line_i = 0; line_i < ret;){
         struct file *file;
-        unsigned char *hash;
         int path_i = 0;
         for (int i = 0;; i++){
             if (buf[line_i + i] == '\n' || line_i + i + 1 == ret){
@@ -130,8 +128,13 @@ int read_table_file(files *files){
                 if (!encoded_hash); //error
                 strncpy(encoded_hash, buf + line_i, path_i - 1);
                 int hash_length;
-                hash = hash_base64_decode(encoded_hash, &hash_length);
+                unsigned char *hash = hash_base64_decode(encoded_hash,
+                        &hash_length);
                 free(encoded_hash);
+                //TODO: should really be a separate function in hash.c, to
+                // encapsulate the hash struct
+                memcpy(file->hash.md, hash, hash_length);
+                free(hash);
                 file->path = calloc(i - path_i + 1, sizeof(char));
                 if (!file->path); //error
                 strncpy(file->path, buf + line_i + path_i, i - path_i);
@@ -155,14 +158,7 @@ int write_table_file(files *files){
 #include <stdio.h>
 int main(int argc, char **argv){
     files *files = create_files();
-    struct file* file = add_path(files, "dht.txt");
+    read_table_file(files);
+    //struct file* file = add_path(files, "dht.txt");
     //printf("%s %s\n", hash_digest_base64(&file->hash), file->path);
-    char *s = "hello, this is a test.";
-    char *a = hash_base64_encode(s, strlen(s));
-    int i;
-    char *b = hash_base64_decode(a, &i);
-    b = realloc(b, sizeof(char) * (i + 1));
-    b[i] = '\0';
-    char *c = hash_base64_encode(b, strlen(b));
-    printf("%s\n%s\n%s\n", a, b, c);
 }
