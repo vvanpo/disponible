@@ -24,9 +24,9 @@ typedef struct files {
 
 /// static function declarations
 static files *create_files();
-static void free_files(files *);
 static int add_file(files *, struct file *);
 static int remove_file(files *, struct file *);
+static void remove_all_files(files *);
 static struct file *add_path(files *, char *);
 static int read_table_file(files *);
 static int write_table_file(files *);
@@ -38,16 +38,6 @@ files *create_files(){
     files->list = calloc(1, sizeof(struct file *));
     if (!files->list); //error
     return files;
-}
-
-// free_files removes all file objects from files and frees all associated
-// resources
-void free_files(files *files){
-    for (int i = 0; files->list[i]; i++)
-        free(files->list[i]);
-    free(files->list);
-    free(files);
-    return;
 }
 
 // add_file adds the given file object to the passed file list
@@ -83,6 +73,16 @@ int remove_file(files *files, struct file *file){
     return -1;
 }
 
+// remove_all_files removes all file objects from files and frees
+void remove_all_files(files *files){
+    for (int i = 0; files->list[i]; i++)
+        free(files->list[i]);
+    files->list = realloc(files->list, sizeof(struct file *));
+    if (!files->list); //error
+    files->list[0] = NULL;
+    return;
+}
+
 // add_path adds a given pathname to the passed file list, and returns the
 // corresponding file object
 struct file *add_path(files *files, char *path){
@@ -96,7 +96,7 @@ struct file *add_path(files *files, char *path){
 
 // read_table reads the local file table and populates a new file tree
 int read_table_file(files *files){
-    free_files(files);
+    remove_all_files(files);
     // check if the local file table exists
     struct stat st;
     if (stat("files", &st)){
@@ -138,6 +138,7 @@ int read_table_file(files *files){
                 file->path = calloc(i - path_i + 1, sizeof(char));
                 if (!file->path); //error
                 strncpy(file->path, buf + line_i + path_i, i - path_i);
+                if (!add_file(files, file)); //error
                 line_i += i + 1;
                 break;
             }
@@ -159,6 +160,5 @@ int write_table_file(files *files){
 int main(int argc, char **argv){
     files *files = create_files();
     read_table_file(files);
-    //struct file* file = add_path(files, "dht.txt");
-    //printf("%s %s\n", hash_digest_base64(&file->hash), file->path);
+    struct file* file = add_path(files, "dht.txt");
 }
