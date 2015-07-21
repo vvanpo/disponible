@@ -7,23 +7,20 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-// hash_digest takes a reference to an already-allocated hash, and
-// populates it with the message digest computed from data in buf
-void hash_digest(hash hash, void *buf, int buf_length){
-    RIPEMD160((byte *) buf, buf_length, hash);
+// hash_digest populates the passed hash with the message digest computed from
+// the data in the passed buffer
+void hash_digest(hash hash, buffer buf){
+    RIPEMD160(buf.data, buf.length, hash);
 }
 
 // hash_file_digest computes the message digest of the file at the given path
-// returns 0 on success, -1 on error
-int hash_file_digest(hash hash, char *path){
-    struct stat st;
-    if (stat(path, &st)); //error
-    if (!S_ISREG(st.st_mode)); //error
+void hash_file_digest(hash hash, char *path){
+    //TODO: handle ENOENT
     int fd = open(path, O_RDONLY);
     if (fd == -1); //error
     RIPEMD160_CTX c;
     if (!RIPEMD160_Init(&c)); //error
-    void *buf = malloc(4096);
+    byte *buf = malloc(4096);
     if (!buf); //error
     int ret;
     do {
@@ -33,21 +30,20 @@ int hash_file_digest(hash hash, char *path){
     if (ret == -1); //error
     free(buf);
     if (!RIPEMD160_Final(hash, &c)); //error
-    return 0;
 }
 
 // hash_base64_encode outputs base64-encoded values as per rfc4648
-char *hash_base64_encode(void *buf, int buf_length){
+char *hash_base64_encode(buffer buf){
     // output buffer needs to be divisible by 4, plus one extra byte for null-
     // termination
-    int length = (4 * ((buf_length + 2) / 3)) + 1;
+    int length = (4 * ((buf.length + 2) / 3)) + 1;
     char *out = malloc(length);
     if (!out); //error
     out[length - 1] = '\0';
-    for (int i = 0, j = 0; i < buf_length; i += 3){
-        unsigned int grp = ((byte *) buf)[i] << 16;
-        if (buf_length - i > 1) grp += ((byte *) buf)[i + 1] << 8;
-        if (buf_length - i > 2) grp += ((byte *) buf)[i + 2];
+    for (int i = 0, j = 0; i < buf.length; i += 3){
+        unsigned int grp =  buf.data[i] << 16;
+        if (buf.length - i > 1) grp += buf.data[i + 1] << 8;
+        if (buf.length - i > 2) grp += buf.data[i + 2];
         for (int k = 0; k < 4; k++){
             int n = (grp & (0x3f << (18 - k * 6))) >> (18 - k * 6);
             byte c;
@@ -56,8 +52,8 @@ char *hash_base64_encode(void *buf, int buf_length){
             else if (n <= 61) c = n - 52 + '0';
             else if (n == 62) c = '+';
             else c = '/';
-            if (((buf_length - i == 1) && k >= 2) ||
-                    ((buf_length - i == 2) && k == 3))
+            if (((buf.length - i == 1) && k >= 2) ||
+                    ((buf.length - i == 2) && k == 3))
                 out[j + k] = '=';
             else
                 out[j + k] = c;
@@ -68,22 +64,24 @@ char *hash_base64_encode(void *buf, int buf_length){
 }
 
 // hash_base64_decode takes base64-encoded values as per rfc4648, and returns
-// the decoded output as well as updating the out_length reference
+// the decoded output
 //TODO: does not handle concatenated base64 streams delineated with padding
 // characters
-byte *hash_base64_decode(char *buf, int *out_length){
+buffer hash_base64_decode(char *str){
+    buffer out = { NULL, 0 };
+    if (!str) return out;
+    buffer in = { (byte *) str, strlen(str) };
+    if (in.length % 4); //error invalid format
     // determine length of output buffer first
-    int buf_length = strlen(buf);
-    if (buf_length % 4); //error invalid format
-    *out_length = 3 * buf_length / 4;
-    if (!buf_length) return NULL;
-    if (buf[buf_length - 1] == '=') *out_length -= 1;
-    if (buf[buf_length - 2] == '=') *out_length -= 1;
-    byte *out = malloc(sizeof(byte) * *out_length);
-    for (int i = 0, j = 0; i < buf_length; i += 4){
+    out.length = 3 * in.length / 4;
+    if (in.data[in.length - 1] == '=') out.length -= 1;
+    if (in.data[in.length - 2] == '=') out.length -= 1;
+    out.data = malloc(sizeof(byte) * out.length);
+    if (!out.data); //error
+    for (int i = 0, j = 0; i < in.length; i += 4){
         int grp = 0;
         for (int k = 0; k < 4; k++){
-            int n, c = (int) buf[i + k];
+            int n, c = (int) in.data[i + k];
             if ('A' <= c && c <= 'Z') n = c - 'A';
             else if ('a' <= c && c <= 'z') n = c - 'a' + 26;
             else if ('0' <= c && c <= '9') n = c - '0' + 52;
@@ -93,15 +91,11 @@ byte *hash_base64_decode(char *buf, int *out_length){
             else ; //error invalid character
             grp += n << (18 - k * 6);
         }
-        for (int k = 0; k < 3 && k + j < *out_length; k++){
-            out[k + j] = (byte) (0xff & (grp >> (16 - k * 8)));
+        for (int k = 0; k < 3 && k + j < out.length; k++){
+            out.data[k + j] = (byte) (0xff & (grp >> (16 - k * 8)));
         }
         j += 3;
     }
     return out;
 }
 
-// hash_digest_base64 returns the base64 encoded hash value
-char *hash_digest_base64(hash hash){
-    return hash_base64_encode(hash, DIGEST_LENGTH);
-}

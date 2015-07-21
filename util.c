@@ -56,5 +56,4 @@ void write_file(char *path, buffer buf){
     if (close(fd)); //error
     if (rename(tmp, path)); //error
     free(tmp);
-    return 0;
 }
