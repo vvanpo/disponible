@@ -1,9 +1,7 @@
 /// implementing header
 #include "peer.h"
 
-#include <netinet/in.h>
 #include <stdlib.h>
-#include <sys/socket.h>
 #include "hash.h"
 #include "util.h"
 
@@ -79,13 +77,6 @@ struct peers *peer_create_list(){
 // nodes (directories and bucket files) are named corresponding to their sub-
 // prefix with respect to their parent node (in hexadecimal)
 void peer_read_table(struct peers *peers){
-}
-
-// peer_listen opens the configured socket and begins a listener thread to
-// service requests from peers
-void peer_listen(struct peers *peers){
-    int udpfd = socket(AF_INET6, SOCK_DGRAM, 0);
-    int tcpfd = socket(AF_INET6, SOCK_STREAM, 0);
 }
 
 /*

@@ -13,10 +13,13 @@
 // interpreted as text, such that buf.data[buf.length] == '\0',
 // i.e. buf.length is not incrememnted to include the NULL byte
 buffer read_file(char *path){
-    //TODO: handle ENOENT
+    buffer buf = { NULL, 0 };
+    if (access(path, R_OK)){
+        if (errno != ENOENT); //error
+        return buf;
+    }
     int fd = open(path, O_RDONLY);
     if (fd == -1); //error
-    buffer buf = { NULL, 0 };
     int ret;
     do {
         buf.data = realloc(buf.data, buf.length + 513);
