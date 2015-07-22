@@ -1,17 +1,14 @@
 #ifndef HASH_H
 #define HASH_H
 
-#include <openssl/ripemd.h>
 #include "util.h"
 
-#define DIGEST_LENGTH RIPEMD160_DIGEST_LENGTH
-
 /// type definitions
-typedef byte hash[DIGEST_LENGTH];
+typedef unsigned char* hash;
 
-void hash_digest(hash, buffer);
-void hash_file_digest(hash, char *);
-char *hash_base64_encode(buffer);
-buffer hash_base64_decode(char *);
+hash hash_digest(buffer);
+hash hash_file_digest(char *);
+char *hash_base64_encode(hash);
+hash distance(hash, hash);
 
 #endif

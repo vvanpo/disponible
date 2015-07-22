@@ -18,18 +18,54 @@ struct file {
     // path needs to be malloc'ed (no string literals), as remove_file frees it
     char *path;
 };
+// simple list of files for now, implement hash table later
+struct files {
+    struct file **list;
+};
 
 /// static function declarations
-static files *create_files();
 static void add_file(files *, struct file *);
 static void remove_file(files *, struct file *);
 static void remove_all_files(files *);
 static struct file *add_path(files *, char *);
-static void read_file_table(files *);
 static void write_file_table(files *);
 
+// file_read_table reads the local file table and repopulates the file list
+void file_read_table(files *files){
+    remove_all_files(files);
+    buffer table = read_file("files"); //check error
+    for (int line_i = 0; line_i < table.length;){
+        struct file *file;
+        int path_i = 0;
+        for (int i = 0;; i++){
+            if (table.data[line_i + i] == '\n' ||
+                    line_i + i + 1 == table.length){
+                if (!path_i); //error invalid file format TODO: remove all files
+                file = malloc(sizeof(struct file));
+                if (!file); //error
+                char *encoded_hash = calloc(path_i, sizeof(char));
+                if (!encoded_hash); //error
+                strncpy(encoded_hash, (char *) table.data + line_i, path_i - 1);
+                buffer hash = util_base64_decode(encoded_hash);
+                free(encoded_hash);
+                memcpy(file->hash, hash.data, hash.length);
+                free(hash.data);
+                file->path = calloc(i - path_i + 1, sizeof(char));
+                if (!file->path); //error
+                strncpy(file->path, (char *) table.data + line_i + path_i,
+                        i - path_i);
+                add_file(files, file); //error check
+                line_i += i + 1;
+                break;
+            }
+            if (!path_i && table.data[line_i + i] == ' ') path_i = i + 1;
+        }
+    }
+    free(table.data);
+}
+
 // create_files initializes a file list
-files *create_files(){
+files *file_create_list(){
     files *files = malloc(sizeof(files));
     if (!files); //error
     files->list = calloc(1, sizeof(struct file *));
@@ -84,43 +120,9 @@ struct file *add_path(files *files, char *path){
     file->path = malloc(sizeof(char) * (strlen(path) + 1));
     if (!file->path); //error
     strcpy(file->path, path);
-    hash_file_digest(file->hash, path);
+    file->hash = hash_file_digest(path);
     add_file(files, file);
     return file;
-}
-
-// read_table reads the local file table and populates a new file tree
-void read_file_table(files *files){
-    remove_all_files(files);
-    buffer table = read_file("files");
-    for (int line_i = 0; line_i < table.length;){
-        struct file *file;
-        int path_i = 0;
-        for (int i = 0;; i++){
-            if (table.data[line_i + i] == '\n' ||
-                    line_i + i + 1 == table.length){
-                if (!path_i); //error invalid file format TODO: remove all files
-                file = malloc(sizeof(struct file));
-                if (!file); //error
-                char *encoded_hash = calloc(path_i, sizeof(char));
-                if (!encoded_hash); //error
-                strncpy(encoded_hash, (char *) table.data + line_i, path_i - 1);
-                buffer hash = hash_base64_decode(encoded_hash);
-                free(encoded_hash);
-                memcpy(file->hash, hash.data, hash.length);
-                free(hash.data);
-                file->path = calloc(i - path_i + 1, sizeof(char));
-                if (!file->path); //error
-                strncpy(file->path, (char *) table.data + line_i + path_i,
-                        i - path_i);
-                add_file(files, file); //error check
-                line_i += i + 1;
-                break;
-            }
-            if (!path_i && table.data[line_i + i] == ' ') path_i = i + 1;
-        }
-    }
-    free(table.data);
 }
 
 // write_file_table creates or overwrites the local file table
@@ -131,8 +133,7 @@ void write_file_table(files *files){
     if (fd == -1); //error
     for (int i = 0; files->list[i]; i++){
         int length;
-        buffer hash = { files->list[i]->hash, DIGEST_LENGTH };
-        char *line = hash_base64_encode(hash);
+        char *line = hash_base64_encode(files->list[i]->hash);
         int hash_length = strlen(line);
         length = hash_length + strlen(files->list[i]->path) +
             (sizeof(char) * 2);

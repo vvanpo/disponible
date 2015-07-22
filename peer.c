@@ -1,7 +1,9 @@
 /// implementing header
 #include "peer.h"
 
+#include <netinet/in.h>
 #include <stdlib.h>
+#include <sys/socket.h>
 #include "hash.h"
 #include "util.h"
 
@@ -50,41 +52,48 @@ struct peers {
     // hash) can be split
     int max_depth;
     // tree of buckets
-    struct bucket *root;
+    struct bucket root;
     //TODO: remote file table (with hashes close to this node) with pointers to
     // known peers
 };
 
 /// static function declarations
-static void write_peer_table(struct peers *);
-//static struct peer *bucket_lookup(struct peers *, hash);
+//static void write_peer_table(struct peers *);
+//static struct bucket *bucket_lookup(struct peers *, hash);
 //static void add_peer(struct peers *, struct peer *);
 //static void remove_peer(struct peers *, struct peer *);
 
 // peer_create_list initializes a peers object
 struct peers *peer_create_list(){
-    struct peers *peers = malloc(sizeof(struct peers));
+    struct peers *peers = calloc(1, sizeof(struct peers));
     if (!peers); //error
     peers->bucket_size = 20;
-    peers->max_depth = 2;
-    peers->root = calloc(1, sizeof(struct bucket *));
-    if (!peers->root); //error
+    peers->max_depth = 4;
     return peers;
 }
 
 // peer_read_table loads the local peer table and updates peers
-// the local table is arranged as one file per bucket, named by prefix number
+// the local table is arranged as one file per leaf bucket
+// the directory hierarchy mimics the tree structure of buckets, but skips
+// nodes in groups of 8, i.e. up to 2^8 nodes in a given directory
+// nodes (directories and bucket files) are named corresponding to their sub-
+// prefix with respect to their parent node (in hexadecimal)
 void peer_read_table(struct peers *peers){
-    
+}
+
+// peer_listen opens the configured socket and begins a listener thread to
+// service requests from peers
+void peer_listen(struct peers *peers){
+    int udpfd = socket(AF_INET6, SOCK_DGRAM, 0);
+    int tcpfd = socket(AF_INET6, SOCK_STREAM, 0);
 }
 
 /*
-// bucket_lookup returns the head of the list of the bucket corresponding to key
-struct peer *bucket_lookup(struct peers *peers, byte *key){
+// bucket_lookup returns the bucket matching the hash
+struct bucket *bucket_lookup(struct peers *peers, hash hash){
     return NULL;
 }
 
 // add_peer adds a peer to its respective bucket
-int add_peer(struct peers *peers, struct peer *peer){
-    return 0;
+void add_peer(struct peers *peers, struct peer *peer){
 }*/

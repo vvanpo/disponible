@@ -9,8 +9,9 @@ typedef struct {
 } buffer;
 
 /// extern function declarations
-byte *distance(byte *, byte *);
 buffer read_file(char *);
 void write_file(char *, buffer);
+char *util_base64_encode(buffer);
+buffer util_base64_decode(char *);
 
 #endif
