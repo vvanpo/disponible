@@ -1,9 +1,10 @@
 /// implementing header
 #include "peer.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 #include "hash.h"
-#include "util.h"
+#include "self.h"
 
 /// type definitions
 struct address {
@@ -15,8 +16,11 @@ struct address {
 };
 struct peer {
     hash fingerprint;
-    buffer public_key;
+    byte *public_key;
     struct address address;
+    // current sequence number in communication with this peer
+    uint32_t sequence_no;
+    byte hmac_key[HMAC_KEY_LENGTH];
     //TODO: known file list for this node
     struct peer *next;
     struct peer *prev;

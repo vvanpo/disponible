@@ -2,13 +2,10 @@
 #include "hash.h"
 
 #include <fcntl.h>
-#include <openssl/ripemd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-#define DIGEST_LENGTH RIPEMD160_DIGEST_LENGTH
 
 // hash_digest populates the passed hash with the message digest computed from
 // the data in the passed buffer
@@ -56,3 +53,9 @@ hash distance(hash a, hash b){
     return d;
 }
 
+hash hash_copy(hash in){
+    hash out = malloc(DIGEST_LENGTH);
+    if (!out); //error
+    memcpy(out, in, DIGEST_LENGTH);
+    return out;
+}
