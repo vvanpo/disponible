@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <openssl/hmac.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <string.h>
 //TODO: consolidate headers
 #include "hash.h"
@@ -57,6 +58,8 @@ union response {
 };
 struct message {
     hash hmac;
+    // used for received messages
+    bool hmac_valid;
     // a given sequence_no uniquely identifies a message for that peer
     // note that since udp is unreliable, not all sequence numbers will be
     // received, and they won't necessarily be in order
@@ -73,6 +76,7 @@ struct message {
 };
 
 /// static function declarations
+static hash message_hmac(byte *, buffer);
 static void message_process(struct self *, struct message *);
 static void message_free(struct message *);
 
@@ -100,7 +104,7 @@ void *message_recv(void *arg){
 
 // message_parse takes a buffer with network-order values and parses it into a
 // message data structure
-struct message *message_parse(buffer buf){
+struct message *message_parse(struct self *self, buffer buf){
     struct message *m = calloc(1, sizeof(struct message));
     if (buf.length < (2 * DIGEST_LENGTH + 5)); //error
     byte *p = buf.data;
@@ -137,6 +141,14 @@ struct message *message_parse(buffer buf){
         default: break;
         }
     }
+    if (p != buf.data + buf.length); //error, extraneous data
+    struct peer *peer = peer_find(self->peers, m->fingerprint);
+    if (peer){
+        byte *key = peer->hmac_key;
+        buffer hmac_buf = { buf.data + DIGEST_LENGTH, buf.length - DIGEST_LENGTH };
+        hash hmac = message_hmac(key, hmac_buf);
+        if (!hash_cmp(hmac, m->hmac)) m->hmac_valid = true;
+    }
     return m;
 }
 
@@ -158,8 +170,18 @@ void message_enqueue_recv(struct self *self, struct message *m){
     if (err); //error
 }
 
+// message_hmac computes the hmac for the raw data in a given message
+hash message_hmac(byte *key, buffer buf){
+    hash hmac = malloc(DIGEST_LENGTH);
+    if (!hmac); //error
+    if (!HMAC(EVP_ripemd160(), key, HMAC_KEY_LENGTH, buf.data, buf.length, hmac,
+            NULL)); //error
+    return hmac;
+}
+
 // message_process handles a received message
 void message_process(struct self *self, struct message *m){
+    
 }
 
 // message_free frees all resources associated with m

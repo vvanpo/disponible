@@ -11,9 +11,11 @@
 /// type definitions
 struct self {
     struct {
+        char *file_folder;
         int udp_port;
         int tcp_port;
-        char *file_folder;
+        int bucket_size;
+        int bucket_max_depth;
     } config;
     hash fingerprint;
     buffer public_key;
@@ -34,7 +36,7 @@ enum message_type { find_peer, find_file, store_ref, command, resend,
 struct self *self_load();
 void self_run_daemon(struct self *);
 void *message_recv(void *);
-struct message *message_parse(buffer);
+struct message *message_parse(struct self *, buffer);
 void message_enqueue_recv(struct self *, struct message *);
 
 #endif

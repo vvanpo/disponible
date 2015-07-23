@@ -74,7 +74,7 @@ void self_listen(struct self *self){
         if (ret == -1); //error
         if (buf.length < ret); //error
         buf.length = ret;
-        struct message *m = message_parse(buf);
+        struct message *m = message_parse(self, buf);
         message_enqueue_recv(self, m);
     }
     if (close(sockfd)); //error

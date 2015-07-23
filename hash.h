@@ -13,6 +13,7 @@ hash hash_digest(buffer);
 hash hash_file_digest(char *);
 char *hash_base64_encode(hash);
 hash hash_copy(hash);
-hash distance(hash, hash);
+int hash_cmp(hash, hash);
+void hash_distance(hash, hash, hash);
 
 #endif

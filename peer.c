@@ -1,42 +1,20 @@
 /// implementing header
 #include "peer.h"
 
-#include <stdint.h>
 #include <stdlib.h>
-#include "hash.h"
 #include "self.h"
 
 /// type definitions
-struct address {
-    char *fqdn;
-    enum { ipv4, ipv6 } ip_version;
-    byte ip[16];
-    int udp_port;
-    int tcp_port;
-};
-struct peer {
-    hash fingerprint;
-    byte *public_key;
-    struct address address;
-    // current sequence number in communication with this peer
-    uint32_t sequence_no;
-    byte hmac_key[HMAC_KEY_LENGTH];
-    //TODO: known file list for this node
-    struct peer *next;
-    struct peer *prev;
-};
 struct bucket {
-    // buckets are sorted in a ordered binary tree
+    // buckets are sorted in an ordered binary tree
     // the root bucket has prefix_length = 0, and therefore depth = 0
-    // only leaf buckets have a non-NULL peer list
     int prefix_length;
     // non-local depth, i.e. the distance up the tree to a local bucket (one
     // containing the local node)
     int depth;
-    // sub_prefix corresponds to the bits from
-    //      [ (prefix_length - depth), prefix_length ]
-    int sub_prefix;
-    // head of the peer list
+    // bytes past prefix[prefix_length] are 0
+    hash prefix;
+    // head of the peer list, non-NULL only for leaf buckets
     struct peer *head;
     struct bucket *parent;
     // a leaf bucket still make use of child pointers, by using them as a
@@ -61,7 +39,7 @@ struct peers {
 
 /// static function declarations
 //static void write_peer_table(struct peers *);
-//static struct bucket *bucket_lookup(struct peers *, hash);
+static struct bucket *find_bucket(struct peers *, hash);
 //static void add_peer(struct peers *, struct peer *);
 //static void remove_peer(struct peers *, struct peer *);
 
@@ -69,8 +47,10 @@ struct peers {
 struct peers *peer_create_list(){
     struct peers *peers = calloc(1, sizeof(struct peers));
     if (!peers); //error
-    peers->bucket_size = 20;
-    peers->max_depth = 4;
+    peers->bucket_size = DEFAULT_BUCKET_SIZE;
+    peers->max_depth = DEFAULT_BUCKET_MAX_DEPTH;
+    peers->root.prefix = calloc(1, DIGEST_LENGTH);
+    if (!peers->root.prefix); //error
     return peers;
 }
 
@@ -83,12 +63,31 @@ struct peers *peer_create_list(){
 void peer_read_table(struct peers *peers){
 }
 
-/*
-// bucket_lookup returns the bucket matching the hash
-struct bucket *bucket_lookup(struct peers *peers, hash hash){
+// peer_find traverses the peer list and returns the peer corresponding to the
+// passed fingerprint, or NULL if absent
+struct peer *peer_find(struct peers *peers, hash fingerprint){
+    struct bucket *b = find_bucket(peers, fingerprint);
+    struct peer *peer = b->head;
+    for (; peer; peer = peer->next)
+        if (!hash_cmp(peer->fingerprint, fingerprint)) return peer;
     return NULL;
 }
 
+
+// bucket_lookup returns the bucket matching the hash
+struct bucket *find_bucket(struct peers *peers, hash h){
+    struct bucket *b = &peers->root;
+    while (!b->head){
+        hash masked = malloc(DIGEST_LENGTH);
+        if (!masked); //error
+        hash_distance(masked, h, b->left->prefix);
+        if (hash_cmp(h, b->left->prefix) < 0) b = b->right;
+        else b = b->left;
+    }
+    return b;
+}
+
+/*
 // add_peer adds a peer to its respective bucket
 void add_peer(struct peers *peers, struct peer *peer){
 }*/

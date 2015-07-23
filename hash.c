@@ -11,6 +11,9 @@
 // the data in the passed buffer
 hash hash_digest(buffer buf){
     hash hash = malloc(DIGEST_LENGTH);
+    if (!hash); //error
+    // RIPEMD160 doesn't specify how it handles errors
+    if (!buf.data); //error
     RIPEMD160(buf.data, buf.length, hash);
     return hash;
 }
@@ -43,19 +46,23 @@ char *hash_base64_encode(hash hash){
     return util_base64_encode(buf);
 }
 
-// distance computes the distance metric between 2 keys
-hash distance(hash a, hash b){
-    hash d = malloc(DIGEST_LENGTH);
-    if (!d); //error
-    for (int i = 0; i < DIGEST_LENGTH; i++){
-        d[i] = a[i] ^ b[i];
-    }
-    return d;
-}
-
+// hash_copy allocates a new hash and copies in the contents of the passed hash
 hash hash_copy(hash in){
     hash out = malloc(DIGEST_LENGTH);
     if (!out); //error
     memcpy(out, in, DIGEST_LENGTH);
     return out;
+}
+
+// hash_cmp returns returns < 0, 0, or > 0 if h1 is closer than, the same, or
+// further than h2 according to the distance metric
+int hash_cmp(hash h1, hash h2){
+    return memcmp(h1, h2, DIGEST_LENGTH);
+}
+
+// hash_distance computes the distance metric (i.e. XOR between hashes) between
+// 2 keys and stores it in dist
+void hash_distance(hash dist, hash a, hash b){
+    for (int i = 0; i < DIGEST_LENGTH; i++)
+        dist[i] = a[i] ^ b[i];
 }
