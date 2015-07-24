@@ -1,8 +1,7 @@
 /// implementing header
-#include "peer.h"
+#include "self.h"
 
 #include <stdlib.h>
-#include "self.h"
 
 /// type definitions
 struct bucket {
@@ -15,8 +14,9 @@ struct bucket {
     // bytes past prefix[prefix_length] are 0
     hash prefix;
     // head of the peer list, non-NULL only for leaf buckets
+    // head->mutex doubly serves as the mutex for the whole bucket
     struct peer *head;
-    struct bucket *parent;
+    int count;
     // a leaf bucket still make use of child pointers, by using them as a
     // shortcut to the nearest leaf buckets, i.e. all leaf buckets are ordered
     // in a doubly-linked list
@@ -39,9 +39,8 @@ struct peers {
 
 /// static function declarations
 //static void write_peer_table(struct peers *);
-static struct bucket *find_bucket(struct peers *, hash);
-//static void add_peer(struct peers *, struct peer *);
-//static void remove_peer(struct peers *, struct peer *);
+static struct bucket *find_bucket(struct bucket *, hash);
+static void split_bucket(struct peers *, struct bucket *);
 
 // peer_create_list initializes a peers object
 struct peers *peer_create_list(){
@@ -66,28 +65,59 @@ void peer_read_table(struct peers *peers){
 // peer_find traverses the peer list and returns the peer corresponding to the
 // passed fingerprint, or NULL if absent
 struct peer *peer_find(struct peers *peers, hash fingerprint){
-    struct bucket *b = find_bucket(peers, fingerprint);
+    struct bucket *b = find_bucket(&peers->root, fingerprint);
     struct peer *peer = b->head;
     for (; peer; peer = peer->next)
         if (!hash_cmp(peer->fingerprint, fingerprint)) return peer;
     return NULL;
 }
 
+// add_peer initializes a peer in its respective bucket
+struct peer *peer_add(struct peers *peers, hash fingerprint){
+    struct peer *peer = calloc(1, sizeof(struct peer));
+    peer->fingerprint = fingerprint;
+    int err = pthread_mutex_init(&peer->mutex, NULL);
+    if (err); //error
+    struct bucket *b = find_bucket(&peers->root, fingerprint);
+    if (!b->head) b->head = peer;
+    else {
+        //TODO: macros for mutexes
+        err = pthread_mutex_lock(&b->head->mutex);
+        if (err); //error
+        if (b->count == peers->bucket_size){
+            split_bucket(peers, b);
+            if (b->head){
+                // bucket couldn't be split
+                //TODO
+                return peer;
+            }
+            b = find_bucket(b, fingerprint);
+        }
+        err = pthread_mutex_lock(&peer->mutex);
+        if (err); //error
+        peer->next = b->head;
+        b->head->prev = peer;
+        b->head = peer;
+        b->count++;
+        err = pthread_mutex_unlock(&b->head->mutex);
+        if (err); //error
+        err = pthread_mutex_unlock(&peer->mutex);
+        if (err); //error
+    }
+    return peer;
+}
 
-// bucket_lookup returns the bucket matching the hash
-struct bucket *find_bucket(struct peers *peers, hash h){
-    struct bucket *b = &peers->root;
+// find_bucket returns the bucket matching the hash, starting its search from
+// the passed bucket (usually &peers->root)
+struct bucket *find_bucket(struct bucket *b, hash h){
     while (!b->head){
-        hash masked = malloc(DIGEST_LENGTH);
-        if (!masked); //error
-        hash_distance(masked, h, b->left->prefix);
         if (hash_cmp(h, b->left->prefix) < 0) b = b->right;
         else b = b->left;
     }
     return b;
 }
 
-/*
-// add_peer adds a peer to its respective bucket
-void add_peer(struct peers *peers, struct peer *peer){
-}*/
+// split_bucket splits the passed bucket if below max_depth
+void split_bucket(struct peers *peers, struct bucket *b){
+
+}

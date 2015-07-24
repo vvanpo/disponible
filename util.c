@@ -1,8 +1,9 @@
 ///implementing header
-#include "util.h"
+#include "self.h"
 
 #include <errno.h>
 #include <fcntl.h>
+#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -117,4 +118,25 @@ buffer util_base64_decode(char *str){
         j += 3;
     }
     return out;
+}
+
+// util_get_address transforms a sockaddr structure into an address structure
+void util_get_address(struct address *a, struct sockaddr *sa){
+    if (sa->sa_family == AF_INET){
+        a->ip_version = ipv4;
+        a->udp_port = ntohl(((struct sockaddr_in *) sa)->sin_port);
+        memcpy(a->ip, &((struct sockaddr_in *) sa)->sin_addr.s_addr, 4);
+    }
+    if (sa->sa_family == AF_INET6){
+        a->ip_version = ipv6;
+        a->udp_port = ntohl(((struct sockaddr_in6 *) sa)->sin6_port);
+        memcpy(a->ip, ((struct sockaddr_in6 *) sa)->sin6_addr.s6_addr, 16);
+    }
+}
+
+char *util_get_fqdn(struct sockaddr *sa, socklen_t salen){
+    char *host = malloc(51);
+    int ret = getnameinfo(sa, salen, host, 50, NULL, 0, 0);
+    if (ret); //error (gai_strerror)
+    return host;
 }

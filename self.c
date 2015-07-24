@@ -5,9 +5,6 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "file.h"
-#include "peer.h"
-#include "util.h"
 
 /// static function declarations
 static void load_config(struct self *);
@@ -45,6 +42,7 @@ void self_run_daemon(struct self *self){
 // defaults if absent
 void load_config(struct self *self){
     //buffer file = read_file("config");
+    self->config.file_folder = "";
     self->config.udp_port = 1024;
 }
 
@@ -75,6 +73,7 @@ void self_listen(struct self *self){
         if (buf.length < ret); //error
         buf.length = ret;
         struct message *m = message_parse(self, buf);
+        util_get_address(&m->address, (struct sockaddr *) &addr);
         message_enqueue_recv(self, m);
     }
     if (close(sockfd)); //error

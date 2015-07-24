@@ -1,5 +1,5 @@
 /// implementing header
-#include "hash.h"
+#include "self.h"
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -7,15 +7,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-// hash_digest populates the passed hash with the message digest computed from
-// the data in the passed buffer
+// hash_digest returns the message digest computed from the data in the passed
+// buffer
 hash hash_digest(buffer buf){
-    hash hash = malloc(DIGEST_LENGTH);
-    if (!hash); //error
+    hash h = malloc(DIGEST_LENGTH);
+    if (!h); //error
     // RIPEMD160 doesn't specify how it handles errors
     if (!buf.data); //error
-    RIPEMD160(buf.data, buf.length, hash);
-    return hash;
+    RIPEMD160(buf.data, buf.length, h);
+    return h;
 }
 
 // hash_file_digest computes the message digest of the file at the given path
@@ -62,7 +62,8 @@ int hash_cmp(hash h1, hash h2){
 
 // hash_distance computes the distance metric (i.e. XOR between hashes) between
 // 2 keys and stores it in dist
-void hash_distance(hash dist, hash a, hash b){
+// dist needs to be pre-allocated, or it can optionally be oneof h1 or h2
+void hash_distance(hash dist, hash h1, hash h2){
     for (int i = 0; i < DIGEST_LENGTH; i++)
-        dist[i] = a[i] ^ b[i];
+        dist[i] = h1[i] ^ h2[i];
 }

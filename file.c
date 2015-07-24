@@ -1,5 +1,5 @@
 /// implementing header
-#include "file.h"
+#include "self.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -8,7 +8,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "hash.h"
 
 /// type definitions
 struct file {
