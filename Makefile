@@ -1,6 +1,6 @@
 CC=cc
 CFLAGS=-g -Wall -lcrypto -pthread
-DEPS=file.h hash.h peer.h self.h util.h
+DEPS=self.h
 OBJ=main.o file.o hash.o peer.o self.o message.o util.o client.o
 NAME=disp
 

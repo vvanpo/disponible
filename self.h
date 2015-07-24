@@ -58,7 +58,6 @@ struct peer {
     uint32_t sequence_no;
     byte hmac_key[HMAC_KEY_LENGTH];
     //TODO: known file list for this node
-    struct bucket *bucket;
     struct peer *next;
     struct peer *prev;
     pthread_mutex_t mutex;
@@ -149,28 +148,28 @@ struct message {
 typedef struct files files;
 
 /// extern function declarations
-files * file_create_list();
-void    file_read_table(files *);
-hash    hash_digest(buffer);
-hash    hash_file_digest(char *);
-char *  hash_base64_encode(hash);
-hash    hash_copy(hash);
-int     hash_cmp(hash, hash);
-void    hash_distance(hash, hash, hash);
-void *  message_recv(void *);
-struct  message *message_parse(struct self *, buffer);
-void    message_enqueue_recv(struct self *, struct message *);
-struct  peers *peer_create_list();
-void    peer_read_table(struct peers *);
-struct  peer *peer_find(struct peers *, hash);
-struct  peer *peer_add(struct peers *, hash);
-void    remove_peer(struct peers *, struct peer *);
-struct  self *self_load();
-void    self_run_daemon(struct self *);
-buffer  read_file(char *);
-void    write_file(char *, buffer);
-char *  util_base64_encode(buffer);
-buffer  util_base64_decode(char *);
-void    util_get_address(struct address *, struct sockaddr *);
+files *         file_create_list();
+void            file_read_table(files *);
+hash            hash_digest(buffer);
+hash            hash_file_digest(char *);
+char *          hash_base64_encode(hash);
+hash            hash_copy(hash);
+int             hash_cmp(hash, hash);
+void            hash_distance(hash, hash, hash);
+void *          message_recv(void *);
+struct          message *message_parse(struct self *, buffer);
+void            message_enqueue_recv(struct self *, struct message *);
+struct peers *  peer_create_list();
+void            peer_read_table(struct peers *);
+struct peer *   peer_find(struct peers *, hash);
+struct peer *   peer_add(struct peers *, hash);
+void            peer_remove(struct peers *, struct peer *);
+struct self *   self_load();
+void            self_run_daemon(struct self *);
+buffer          read_file(char *);
+void            write_file(char *, buffer);
+char *          util_base64_encode(buffer);
+buffer          util_base64_decode(char *);
+void            util_get_address(struct address *, struct sockaddr *);
 
 #endif

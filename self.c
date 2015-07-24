@@ -65,16 +65,17 @@ void self_listen(struct self *self){
     if (!buf.data); //error
     while (1){
         buf.length = MAX_UDP_PAYLOAD;
-        struct sockaddr_storage addr;
-        addrlen = sizeof(addr);
+        struct sockaddr_storage sa;
+        socklen_t salen = sizeof(addr);
         int ret = recvfrom(sockfd, buf.data, buf.length, MSG_TRUNC,
-                (struct sockaddr *) &addr, &addrlen);
+                (struct sockaddr *) &sa, &salen);
         if (ret == -1); //error
         if (buf.length < ret); //error
         buf.length = ret;
         struct message *m = message_parse(self, buf);
-        util_get_address(&m->address, (struct sockaddr *) &addr);
+        util_get_address(&m->address, (struct sockaddr *) &sa);
         message_enqueue_recv(self, m);
+        // m is now owned by the recv thread
     }
     if (close(sockfd)); //error
 }

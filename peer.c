@@ -11,12 +11,15 @@ struct bucket {
     // non-local depth, i.e. the distance up the tree to a local bucket (one
     // containing the local node)
     int depth;
-    // bytes past prefix[prefix_length] are 0
+    // bits past prefix_length are 0
     hash prefix;
     // head of the peer list, non-NULL only for leaf buckets
-    // head->mutex doubly serves as the mutex for the whole bucket
+    // the test for a leaf bucket is a non-NULL head, so empty leaves must get
+    // merged
     struct peer *head;
+    // number of peers in (leaf) bucket
     int count;
+    struct bucket *parent;
     // a leaf bucket still make use of child pointers, by using them as a
     // shortcut to the nearest leaf buckets, i.e. all leaf buckets are ordered
     // in a doubly-linked list
@@ -41,6 +44,7 @@ struct peers {
 //static void write_peer_table(struct peers *);
 static struct bucket *find_bucket(struct bucket *, hash);
 static void split_bucket(struct peers *, struct bucket *);
+static void merge_buckets(struct bucket *);
 
 // peer_create_list initializes a peers object
 struct peers *peer_create_list(){
@@ -72,7 +76,7 @@ struct peer *peer_find(struct peers *peers, hash fingerprint){
     return NULL;
 }
 
-// add_peer initializes a peer in its respective bucket
+// peer_add initializes a peer in its respective bucket
 struct peer *peer_add(struct peers *peers, hash fingerprint){
     struct peer *peer = calloc(1, sizeof(struct peer));
     peer->fingerprint = fingerprint;
@@ -81,8 +85,6 @@ struct peer *peer_add(struct peers *peers, hash fingerprint){
     struct bucket *b = find_bucket(&peers->root, fingerprint);
     if (!b->head) b->head = peer;
     else {
-        //TODO: macros for mutexes
-        err = pthread_mutex_lock(&b->head->mutex);
         if (err); //error
         if (b->count == peers->bucket_size){
             split_bucket(peers, b);
@@ -93,18 +95,33 @@ struct peer *peer_add(struct peers *peers, hash fingerprint){
             }
             b = find_bucket(b, fingerprint);
         }
-        err = pthread_mutex_lock(&peer->mutex);
         if (err); //error
         peer->next = b->head;
         b->head->prev = peer;
         b->head = peer;
         b->count++;
-        err = pthread_mutex_unlock(&b->head->mutex);
-        if (err); //error
-        err = pthread_mutex_unlock(&peer->mutex);
-        if (err); //error
     }
     return peer;
+}
+
+// peer_remove deletes a peer from the list
+void peer_remove(struct peers *peers, struct peer *peer){
+    if (!peer->prev){
+        struct bucket *b = find_bucket(&peers->root, peer->fingerprint);
+        if (!peer->next){
+            b->head = NULL;
+            b = b->parent;
+            merge_buckets(b);
+        }
+        else b->head = peer->next;
+    }
+    else peer->prev->next = peer->next;
+    if (peer->next)
+        peer->next->prev = peer->prev;
+    int err = pthread_mutex_destroy(&peer->mutex);
+    if (err); //error
+    free(peer->fingerprint);
+    free(peer);
 }
 
 // find_bucket returns the bucket matching the hash, starting its search from
@@ -117,7 +134,78 @@ struct bucket *find_bucket(struct bucket *b, hash h){
     return b;
 }
 
-// split_bucket splits the passed bucket if below max_depth
+// split_bucket splits the passed bucket if < max_depth
+// only to be called on a leaf bucket
 void split_bucket(struct peers *peers, struct bucket *b){
+    if (b->depth == peers->max_depth) return;
+    struct bucket *left = calloc(1, sizeof(struct bucket));
+    if (!b->left); //error
+    struct bucket *right = calloc(1, sizeof(struct bucket));
+    if (!b->right); //error
+    int pref_len = b->prefix_length + 1;
+    left->prefix_length = right->prefix_length = pref_len;
+    left->depth = right->depth = b->depth + 1;
+    left->parent = right->parent = b;
+    left->prefix = hash_copy(b->prefix);
+    left->prefix[pref_len / 8] |= 1 << (8 - (pref_len % 8));
+    right->prefix = hash_copy(b->prefix);
+    left->right = right;
+    right->left = left;
+    if (b->left){
+        b->left->right = left;
+        left->left = b->left;
+    }
+    if (b->right){
+        b->right->left = right;
+        right->right = b->right;
+    }
+    b->left = left;
+    b->right = right;
+    struct peer *p_last_left = NULL;
+    struct peer *p_last_right = NULL;
+    struct peer *p_next;
+    for (struct peer *p = b->head; p; p = p_next){
+        p_next = p->next;
+        if (hash_cmp(p->fingerprint, left->prefix) < 0){
+            if (!p_last_right) right->head = p;
+            p->prev = p_last_right;
+            p_last_right->next = p;
+            right->count++;
+        }
+        else {
+            if (!p_last_left) left->head = p;
+            p->prev = p_last_left;
+            p_last_left->next = p;
+            left->count++;
+        }
+    }
+    p_last_left->next = NULL;
+    p_last_right->next = NULL;
+    b->head = NULL;
+    b->count = 0;
+}
 
+// merge_buckets merges two leaves with the same parent
+//TODO: merge keeping the LRU property (only if ever used with both buckets non-
+// empty)
+void merge_buckets(struct bucket *parent){
+    if (parent->left->head){
+        parent->head = parent->left->head;
+        parent->count = parent->left->count;
+    }
+    if (parent->right->head){
+        if (parent->head){
+            struct peer *last;
+            for (last = parent->head; last->next; last = last->next);
+            last->next = parent->right->head;
+            parent->right->head->prev = last;
+        }
+        else parent->head = parent->right->head;
+        parent->count += parent->right->count;
+    }
+    free(parent->left->prefix);
+    free(parent->left);
+    free(parent->right->prefix);
+    free(parent->right);
+    parent->left = parent->right = NULL;
 }

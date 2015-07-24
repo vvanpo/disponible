@@ -146,15 +146,11 @@ void message_process(struct self *self, struct message *m){
         return;
     }
     if (!m->hmac_valid) return; //error
-    int err = pthread_mutex_lock(&m->peer->mutex);
-    if (err); //error
     if (m->peer->sequence_no < m->sequence_no)
         m->peer->sequence_no = m->sequence_no;
     m->peer->address.ip_version = m->address.ip_version;
     memcpy(m->peer->address.ip, m->address.ip, 16);
     m->peer->address.udp_port =  m->address.udp_port;
-    err = pthread_mutex_unlock(&m->peer->mutex);
-    if (err); //error
 }
 
 // message_free frees all resources associated with m
