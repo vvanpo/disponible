@@ -134,6 +134,24 @@ void util_get_address(struct address *a, struct sockaddr *sa){
     }
 }
 
+// util_get_sockaddr transforms an address structure into a sockaddr structure
+struct sockaddr *util_get_sockaddr(struct sockaddr_storage *sa,
+        struct address *a){
+    if (a->ip_version == ipv4){
+        struct sockaddr_in *s = (struct sockaddr_in *) sa;
+        s->sin_family = AF_INET;
+        memcpy(&s->sin_addr.s_addr, a->ip, 4);
+        s->sin_port = htonl(a->udp_port);
+    }
+    if (a->ip_version == ipv6){
+        struct sockaddr_in6 *s = (struct sockaddr_in6 *) sa;
+        s->sin6_family = AF_INET6;
+        memcpy(s->sin6_addr.s6_addr, a->ip, 16);
+        s->sin6_port = htonl(a->udp_port);
+    }
+    return (struct sockaddr *) sa;
+}
+
 char *util_get_fqdn(struct sockaddr *sa, socklen_t salen){
     char *host = malloc(51);
     int ret = getnameinfo(sa, salen, host, 50, NULL, 0, 0);

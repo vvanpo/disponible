@@ -57,6 +57,9 @@ struct peer {
     // current sequence number in communication with this peer
     uint32_t sequence_no;
     byte hmac_key[HMAC_KEY_LENGTH];
+    enum { state_none, state_waiting } state;
+    // if state_waiting, message is delayed for processing
+    struct message *waiting;
     //TODO: known file list for this node
     struct peer *next;
     struct peer *prev;
@@ -171,5 +174,6 @@ void            write_file(char *, buffer);
 char *          util_base64_encode(buffer);
 buffer          util_base64_decode(char *);
 void            util_get_address(struct address *, struct sockaddr *);
+struct sockaddr *util_get_sockaddr(struct sockaddr_storage *, struct address *);
 
 #endif

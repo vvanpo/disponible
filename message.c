@@ -125,14 +125,14 @@ hash message_hmac(byte *key, buffer buf){
 
 // message_process handles a received message
 void message_process(struct self *self, struct message *m){
-    if (m->sequence_no == 0) {
+    if (m->sequence_no == 0){
         if (m->class != request || m->type != find_peer) return; //error
         if (hash_cmp(m->request.find_peer.fingerprint, self->fingerprint))
             return; //error
         buffer public_key = { m->request.find_peer.public_key, KEY_LENGTH };
-        if (hash_cmp(m->fingerprint, hash_digest(public_key))) return; //error
-        //TODO: decide on code convention for inlining if statements and the
-        //  like
+        hash h = hash_digest(public_key);
+        if (hash_cmp(m->fingerprint, h)) return; //error
+        free(h);
         if (!m->peer){
             m->peer = peer_add(self->peers, m->fingerprint);
             memcpy(m->peer->public_key, public_key.data, KEY_LENGTH);
@@ -142,10 +142,32 @@ void message_process(struct self *self, struct message *m){
         // as such the node should not alter its known info about the peer until
         // it can verify it is legitimate, i.e. after the peer successfully
         // decrypts the response
+        m->peer->state = state_waiting;
+        m->peer->waiting = m;
         //TODO: send response
         return;
     }
-    if (!m->hmac_valid) return; //error
+    if (m->sequence_no == 1){
+        if (!m->peer) return; //error
+        if (m->class != response || m->type != find_peer) return; //error
+        buffer public_key = { m->response.find_peer.public_key, KEY_LENGTH };
+        hash h = hash_digest(public_key);
+        if (hash_cmp(m->peer->fingerprint, h)) return; //error
+        free(h);
+        memcpy(m->peer->hmac_key, m->response.find_peer.shared_key,
+                HMAC_KEY_LENGTH);
+        //TODO: find a clean way of working with variable max udp payloads
+        //  lengths, and therefore splitting datagrams up
+        //  OR, just use TCP for key exchange
+        m->peer->waiting = m;
+    }
+    if (!m->hmac_valid){
+        if (!m->peer){
+            //TODO: send 'resend sequence_no 0' request
+            return;
+        }
+        return; //error
+    }
     if (m->peer->sequence_no < m->sequence_no)
         m->peer->sequence_no = m->sequence_no;
     m->peer->address.ip_version = m->address.ip_version;
