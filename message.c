@@ -12,11 +12,14 @@ static void message_process(struct self *, struct message *);
 static void message_free(struct message *);
 static void new_hmac_key(byte *);
 
-// message_recv is the main thread for processing received messages
-void *message_recv(void *arg){
+// message_dequeue_recv is the main thread for processing received messages
+void *message_dequeue_recv(void *arg){
     struct self *self = (struct self *) arg;
     while (1){
         int err = pthread_mutex_lock(&self->recv_queue.mutex);
+        if (err); //error
+        err =
+            pthread_cond_wait(&self->recv_queue.empty, &self->recv_queue.mutex);
         if (err); //error
         struct message *m = self->recv_queue.head;
         if (m){
@@ -29,7 +32,6 @@ void *message_recv(void *arg){
         err = pthread_mutex_unlock(&self->recv_queue.mutex);
         if (err); //error
         message_process(self, m);
-        message_free(m);
     }
     return NULL;
 }
@@ -111,6 +113,8 @@ void message_enqueue_recv(struct self *self, struct message *m){
     self->recv_queue.head = m;
     self->recv_queue.tail = m;
     err = pthread_mutex_unlock(&self->recv_queue.mutex);
+    if (err); //error
+    err = pthread_cond_signal(&self->recv_queue.empty);
     if (err); //error
 }
 

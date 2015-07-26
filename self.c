@@ -6,9 +6,25 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#define X(n, s) s,
+char *error_str[] = {
+    DI_ERRORS
+};
+#undef X
+
 /// static function declarations
 static void load_config(struct self *);
 static void self_listen(struct self *);
+
+enum di_error di_daemon_load(struct di_daemon **d, struct di_options *opts){
+    struct self *self = self_load();
+    *d = (struct di_daemon *) self;
+    return DI_ESUCCESS;
+}
+enum di_error di_daemon_run(struct di_daemon *d){
+    self_run_daemon((struct self *) d);
+    return DI_ESUCCESS;
+}
 
 // self_load loads all the necessary data structures into self required for
 // starting the daemon
@@ -25,13 +41,15 @@ struct self *self_load(){
     file_read_table(self->files);
     int err = pthread_mutex_init(&self->recv_queue.mutex, NULL);
     if (err); //error
+    err = pthread_cond_init(&self->recv_queue.empty, NULL);
+    if (err); //error
     return self;
 }
 
 // self_run_daemon starts the main run loop and processing threads
 void self_run_daemon(struct self *self){
     pthread_t recv_thread;
-    int err = pthread_create(&recv_thread, NULL, message_recv, self);
+    int err = pthread_create(&recv_thread, NULL, message_dequeue_recv, self);
     if (err); //error
     self_listen(self);
     err = pthread_join(recv_thread, NULL);

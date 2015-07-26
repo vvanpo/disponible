@@ -3,9 +3,12 @@
 
 /// includes
 #include <arpa/inet.h>
+#include <assert.h>
 #include <openssl/ripemd.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include "disponible.h"
 
 /// macro definitions
 #define DIGEST_LENGTH RIPEMD160_DIGEST_LENGTH
@@ -41,6 +44,7 @@ struct self {
         struct message *head;
         struct message *tail;
         pthread_mutex_t mutex;
+        pthread_cond_t empty;
     } recv_queue;
 };
 struct address {
@@ -159,9 +163,9 @@ char *          hash_base64_encode(hash);
 hash            hash_copy(hash);
 int             hash_cmp(hash, hash);
 void            hash_distance(hash, hash, hash);
-void *          message_recv(void *);
 struct          message *message_parse(struct self *, buffer);
 void            message_enqueue_recv(struct self *, struct message *);
+void *          message_dequeue_recv(void *);
 struct peers *  peer_create_list();
 void            peer_read_table(struct peers *);
 struct peer *   peer_find(struct peers *, hash);

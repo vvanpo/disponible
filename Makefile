@@ -2,7 +2,7 @@ CC=cc
 CFLAGS=-g -Wall -lcrypto -pthread
 DEPS=self.h
 OBJ=main.o file.o hash.o peer.o self.o message.o util.o client.o
-NAME=disp
+NAME=disponible
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
