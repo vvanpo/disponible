@@ -1,7 +1,7 @@
 CC=cc
 CFLAGS=-g -Wall -lcrypto -pthread
 DEPS=self.h
-OBJ=main.o file.o hash.o peer.o self.o message.o util.o client.o
+OBJ=main.o self.o peer.o message.o protocol.o hash.o util.o #file.o client.o
 NAME=disponible
 
 %.o: %.c $(DEPS)

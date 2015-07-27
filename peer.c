@@ -2,6 +2,7 @@
 #include "self.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 /// type definitions
 struct bucket {
@@ -12,7 +13,7 @@ struct bucket {
     // containing the local node)
     int depth;
     // bits past prefix_length are 0
-    hash prefix;
+    byte prefix[DIGEST_LENGTH];
     // head of the peer list, non-NULL only for leaf buckets
     // the test for a leaf bucket is a non-NULL head, so empty leaves must get
     // merged
@@ -38,11 +39,13 @@ struct peers {
     struct bucket root;
     //TODO: remote file table (with hashes close to this node) with pointers to
     // known peers
+    //TODO: add special 'swarm' bucket for extra peers transferring files to
+    // this node
 };
 
 /// static function declarations
 //static void write_peer_table(struct peers *);
-static struct bucket *find_bucket(struct bucket *, hash);
+static struct bucket *find_bucket(struct bucket *, byte *);
 static void split_bucket(struct peers *, struct bucket *);
 static void merge_buckets(struct bucket *);
 
@@ -52,8 +55,6 @@ struct peers *peer_create_list(){
     if (!peers); //error
     peers->bucket_size = DEFAULT_BUCKET_SIZE;
     peers->max_depth = DEFAULT_BUCKET_MAX_DEPTH;
-    peers->root.prefix = calloc(1, DIGEST_LENGTH);
-    if (!peers->root.prefix); //error
     return peers;
 }
 
@@ -68,7 +69,7 @@ void peer_read_table(struct peers *peers){
 
 // peer_find traverses the peer list and returns the peer corresponding to the
 // passed fingerprint, or NULL if absent
-struct peer *peer_find(struct peers *peers, hash fingerprint){
+struct peer *peer_find(struct peers *peers, byte *fingerprint){
     struct bucket *b = find_bucket(&peers->root, fingerprint);
     struct peer *peer = b->head;
     for (; peer; peer = peer->next)
@@ -77,30 +78,27 @@ struct peer *peer_find(struct peers *peers, hash fingerprint){
 }
 
 // peer_add initializes a peer in its respective bucket
-struct peer *peer_add(struct peers *peers, hash fingerprint){
-    struct peer *peer = calloc(1, sizeof(struct peer));
-    peer->fingerprint = fingerprint;
-    int err = pthread_mutex_init(&peer->mutex, NULL);
-    if (err); //error
+struct peer *peer_add(struct peers *peers, byte *fingerprint){
     struct bucket *b = find_bucket(&peers->root, fingerprint);
-    if (!b->head) b->head = peer;
-    else {
-        if (err); //error
-        if (b->count == peers->bucket_size){
-            split_bucket(peers, b);
-            if (b->head){
-                // bucket couldn't be split
-                //TODO
-                return peer;
-            }
-            b = find_bucket(b, fingerprint);
-        }
-        if (err); //error
+    //TODO add bucket structure mutex
+    if (b->count == peers->bucket_size){
+        if (b->depth == peers->max_depth)
+            // bucket can't be split, range is full
+            //TODO: test responsiveness of existing peers
+            return NULL;
+        split_bucket(peers, b);
+        b = find_bucket(b, fingerprint);
+    }
+    struct peer *peer = calloc(1, sizeof(struct peer));
+    if (!peer); // system error
+    memcpy(peer->fingerprint, fingerprint, DIGEST_LENGTH);
+    if (b->head){
         peer->next = b->head;
         b->head->prev = peer;
         b->head = peer;
         b->count++;
     }
+    else b->head = peer;
     return peer;
 }
 
@@ -118,15 +116,13 @@ void peer_remove(struct peers *peers, struct peer *peer){
     else peer->prev->next = peer->next;
     if (peer->next)
         peer->next->prev = peer->prev;
-    int err = pthread_mutex_destroy(&peer->mutex);
-    if (err); //error
     free(peer->fingerprint);
     free(peer);
 }
 
 // find_bucket returns the bucket matching the hash, starting its search from
 // the passed bucket (usually &peers->root)
-struct bucket *find_bucket(struct bucket *b, hash h){
+struct bucket *find_bucket(struct bucket *b, byte *h){
     while (!b->head){
         if (hash_cmp(h, b->left->prefix) < 0) b = b->right;
         else b = b->left;
@@ -146,9 +142,9 @@ void split_bucket(struct peers *peers, struct bucket *b){
     left->prefix_length = right->prefix_length = pref_len;
     left->depth = right->depth = b->depth + 1;
     left->parent = right->parent = b;
-    left->prefix = hash_copy(b->prefix);
+    memcpy(left->prefix, b->prefix, DIGEST_LENGTH);
     left->prefix[pref_len / 8] |= 1 << (8 - (pref_len % 8));
-    right->prefix = hash_copy(b->prefix);
+    memcpy(right->prefix, b->prefix, DIGEST_LENGTH);
     left->right = right;
     right->left = left;
     if (b->left){

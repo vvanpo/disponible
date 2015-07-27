@@ -11,7 +11,7 @@
 
 /// type definitions
 struct file {
-    hash hash;
+    byte *hash;
     // path cannot have a newline in it, or it will break the local file table
     // format
     // path needs to be malloc'ed (no string literals), as remove_file frees it

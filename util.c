@@ -4,67 +4,73 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <openssl/hmac.h>
+#include <openssl/pem.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-// read_file returns the given file in a buffer
-// the returned buffer is null-terminated in case the output is to be
-// interpreted as text, such that buf.data[buf.length] == '\0',
-// i.e. buf.length is not incrememnted to include the NULL byte
-buffer read_file(char *path){
-    buffer buf = { NULL, 0 };
+// util_read_file allocates and writes the given file to '*out'
+// returns the number of bytes written, excluding NULL-terminator
+// i.e. *out[read_file(out, path)] == '\0'
+// returns 0 if the file could not be opened, due to permissions or not
+// existing, or the file was empty
+// if the file was empty (*out)[0] == '\0', whereas if it did not exist *out == NULL
+int util_read_file(byte **out, char *path){
     if (access(path, R_OK)){
-        if (errno != ENOENT); //error
-        return buf;
+        if (errno == ENOENT || errno == EACCES || errno == ENOTDIR)
+            return 0;
+        //error
     }
     int fd = open(path, O_RDONLY);
     if (fd == -1); //error
-    int ret;
+    int ret, length = 0;
     do {
-        buf.data = realloc(buf.data, buf.length + 513);
-        if (!buf.data); //error
-        buf.data[buf.length + 512] = '\0';
-        ret = read(fd, buf.data + buf.length, 512);
+        *out = realloc(*out, length + 513);
+        if (!*out); //error
+        ret = read(fd, *out + length, 512);
         if (ret == -1) break; //error
-        buf.length += ret;
+        (*out)[length + ret] = '\0';
+        length += ret;
     } while (ret);
     if (close(fd)); //error
-    return buf;
+    return length;
 }
 
-// write_file atomically creates or overwrites the given file with the data in
-// the passed buffer
-void write_file(char *path, buffer buf){
-    char *tmp = calloc(1, strlen(path) + 1);
+// util_write_file atomically creates or overwrites the given file with the data
+// in the 'in' of length 'length'
+void util_write_file(char *path, byte *in, int length){
+    // + 2 to account for NULL-termination
+    char *tmp = calloc(1, strlen(path) + 2);
+    strcpy(tmp, path);
     strcat(tmp, "~");
     if (unlink(tmp) == -1)
         if (errno != ENOENT); //error
     int fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd == -1); //error
     //TODO: account for partial writes
-    int ret = write(fd, buf.data, buf.length);
+    int ret = write(fd, in, length);
     if (ret == -1); //error
-    if (ret < buf.length); //error
+    if (ret < length); //error
     if (fsync(fd)); //error
     if (close(fd)); //error
     if (rename(tmp, path)); //error
     free(tmp);
 }
 
-// util_base64_encode outputs base64-encoded values as per rfc4648
-char *util_base64_encode(buffer buf){
+// util_base64_encode returns base64-encoded values as per rfc4648
+char *util_base64_encode(byte *in, int length){
     // output buffer needs to be divisible by 4, plus one extra byte for null-
     // termination
-    int length = (4 * ((buf.length + 2) / 3)) + 1;
-    char *out = malloc(length);
+    int l = (4 * ((length + 2) / 3)) + 1;
+    char *out = malloc(l);
     if (!out); //error
-    out[length - 1] = '\0';
-    for (int i = 0, j = 0; i < buf.length; i += 3){
-        unsigned int grp =  buf.data[i] << 16;
-        if (buf.length - i > 1) grp += buf.data[i + 1] << 8;
-        if (buf.length - i > 2) grp += buf.data[i + 2];
+    out[l - 1] = '\0';
+    for (int i = 0, j = 0; i < length; i += 3){
+        unsigned int grp =  in[i] << 16;
+        if (length - i > 1) grp += in[i + 1] << 8;
+        if (length - i > 2) grp += in[i + 2];
         for (int k = 0; k < 4; k++){
             int n = (grp & (0x3f << (18 - k * 6))) >> (18 - k * 6);
             byte c;
@@ -73,8 +79,8 @@ char *util_base64_encode(buffer buf){
             else if (n <= 61) c = n - 52 + '0';
             else if (n == 62) c = '+';
             else c = '/';
-            if (((buf.length - i == 1) && k >= 2) ||
-                    ((buf.length - i == 2) && k == 3))
+            if (((length - i == 1) && k >= 2) ||
+                    ((length - i == 2) && k == 3))
                 out[j + k] = '=';
             else
                 out[j + k] = c;
@@ -84,25 +90,25 @@ char *util_base64_encode(buffer buf){
     return out;
 }
 
-// util_base64_decode takes base64-encoded values as per rfc4648, and returns
-// the decoded output
+// util_base64_decode takes base64-encoded values as per rfc4648, and writes 
+// the decoded output to *out, returning the number of bytes written
 //TODO: does not handle concatenated base64 streams delineated with padding
 // characters
-buffer util_base64_decode(char *str){
-    buffer out = { NULL, 0 };
-    if (!str) return out;
-    buffer in = { (byte *) str, strlen(str) };
-    if (in.length % 4); //error invalid format
+int util_base64_decode(byte **out, char *in){
+    *out = NULL;
+    if (!in) return 0;
+    int length = strlen(in);
+    if (length % 4); //error invalid format
     // determine length of output buffer first
-    out.length = 3 * in.length / 4;
-    if (in.data[in.length - 1] == '=') out.length -= 1;
-    if (in.data[in.length - 2] == '=') out.length -= 1;
-    out.data = malloc(sizeof(byte) * out.length);
-    if (!out.data); //error
-    for (int i = 0, j = 0; i < in.length; i += 4){
+    int l = 3 * length / 4;
+    if (in[length - 1] == '=') l -= 1;
+    if (in[length - 2] == '=') l -= 1;
+    *out = malloc(l);
+    if (!out); //error
+    for (int i = 0, j = 0; i < length; i += 4){
         int grp = 0;
         for (int k = 0; k < 4; k++){
-            int n, c = (int) in.data[i + k];
+            int n, c = (int) in[i + k];
             if ('A' <= c && c <= 'Z') n = c - 'A';
             else if ('a' <= c && c <= 'z') n = c - 'a' + 26;
             else if ('0' <= c && c <= '9') n = c - '0' + 52;
@@ -112,12 +118,12 @@ buffer util_base64_decode(char *str){
             else ; //error invalid character
             grp += n << (18 - k * 6);
         }
-        for (int k = 0; k < 3 && k + j < out.length; k++){
-            out.data[k + j] = (byte) (0xff & (grp >> (16 - k * 8)));
+        for (int k = 0; k < 3 && k + j < l; k++){
+            (*out)[k + j] = (byte) (0xff & (grp >> (16 - k * 8)));
         }
         j += 3;
     }
-    return out;
+    return l;
 }
 
 // util_get_address transforms a sockaddr structure into an address structure
@@ -152,9 +158,80 @@ struct sockaddr *util_get_sockaddr(struct sockaddr_storage *sa,
     return (struct sockaddr *) sa;
 }
 
+// util_get_fqdn returns the fqdn of address specified in 'sa'
 char *util_get_fqdn(struct sockaddr *sa, socklen_t salen){
     char *host = malloc(51);
     int ret = getnameinfo(sa, salen, host, 50, NULL, 0, 0);
     if (ret); //error (gai_strerror)
     return host;
+}
+
+// util_hmac_key initializes a new random shared key
+void util_hmac_key(byte *key){
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd == -1); //error
+    //TODO: loop to make sure short reads don't compromise the key
+    int ret = read(fd, key, HMAC_KEY_LENGTH);
+    if (ret == -1); //error
+    if (close(fd)); //error
+}
+
+// util_hmac writes the hmac of 'data' to 'out'
+void util_hmac(byte *out, byte *data, int length, byte *key){
+    if (!HMAC(EVP_ripemd160(), key, HMAC_KEY_LENGTH, data, length, out, NULL));
+        //error
+}
+
+// util_read_rsa_pem reads in the PEM private key at path
+//TODO: accept (byte *) instead, and detect public or private key
+RSA *util_read_rsa_pem(char *path){
+    if (access(path, R_OK))
+        if (errno != ENOENT); //error
+    FILE *fd = fopen(path, "r");
+    if (!fd); //error
+    RSA *rsa = PEM_read_RSAPrivateKey(fd, NULL, 0, NULL);
+    if (!rsa); //error
+    if (fclose(fd)); //error
+    return rsa;
+}
+
+// util_rsa_encrypt encrypts data with the public portion of 'rsa' and writes to
+// 'out'
+// 'out' must be of at least RSA_MODULUS_LENGTH bytes, and length can't be over
+// RSA_MESSAGE_MAX_LENGTH
+void util_rsa_encrypt(byte *out, RSA *rsa, byte *data, int length){
+    assert(length > RSA_MESSAGE_MAX_LENGTH);
+    if(RSA_public_encrypt(length, data, out, rsa, RSA_PADDING) < 0); //error
+}
+
+// util_rsa_decrypt using the private key contained within 'rsa', and writes to
+// 'out', with the message length returned
+// 'data' and 'out' must be of at least RSA_MODULUS_LENGTH bytes
+// 'data' must be of at least RSA_MODULUS_LENGTH bytes, and 'out' of at least
+// RSA_MESSAGE_MAX_LENGTH bytes
+int util_rsa_decrypt(byte *out, RSA *rsa, byte *data){
+    assert(out && rsa && data);
+    int l =
+        RSA_private_decrypt(RSA_MODULUS_LENGTH, data, out, rsa, RSA_PADDING);
+    if (l < 0); //error
+    return l;
+}
+
+// util_rsa_pub_encode encodes a public key for transfer
+// out must be of at least PUB_KEY_LENGTH bytes
+void util_rsa_pub_encode(byte *out, RSA *rsa){
+    memset(out, 0, PUB_KEY_LENGTH);
+    if (BN_bn2bin(rsa->e, out) <= RSA_EXPONENT_LENGTH) assert(true);
+    if (BN_bn2bin(rsa->n, out + RSA_EXPONENT_LENGTH) == RSA_MODULUS_LENGTH)
+        assert(true);
+}
+
+// util_rsa_pub_decode takes an array of PUB_KEY_LENGTH bytes and writes its
+// values to an RSA object
+RSA *util_rsa_pub_decode(byte *in){
+    RSA *rsa = RSA_new();
+    if (BN_bin2bn(in, RSA_EXPONENT_LENGTH, rsa->e)); //error
+    if (BN_bin2bn(in + RSA_EXPONENT_LENGTH, RSA_MODULUS_LENGTH, rsa->n));
+        //error
+    return rsa;
 }

@@ -32,13 +32,14 @@ struct self *self_load(){
     struct self *self = calloc(1, sizeof(struct self));
     if (!self); //error
     load_config(self);
-    self->public_key = read_file("keys/public");
-    self->private_key = read_file("keys/private");
-    self->fingerprint = hash_digest(self->public_key);
+    self->rsa_key = util_read_rsa_pem("keys/private");
+    byte tmp[PUB_KEY_LENGTH];
+    util_rsa_pub_encode(tmp, self->rsa_key);
+    hash_digest(self->fingerprint, tmp, PUB_KEY_LENGTH);
     self->peers = peer_create_list();
     peer_read_table(self->peers);
-    self->files = file_create_list();
-    file_read_table(self->files);
+    //self->files = file_create_list();
+    //file_read_table(self->files);
     int err = pthread_mutex_init(&self->recv_queue.mutex, NULL);
     if (err); //error
     err = pthread_cond_init(&self->recv_queue.empty, NULL);
@@ -79,22 +80,23 @@ void self_listen(struct self *self){
     if (bind(sockfd, (struct sockaddr *) &addr, addrlen)); //error
     //TODO: attempt bind with port 0 if denied due to in-use port
     //TODO: find optimal buffer size
-    buffer buf = { malloc(MAX_UDP_PAYLOAD) };
-    if (!buf.data); //error
+    byte *buf = malloc(MAX_UDP_PAYLOAD);
+    if (!buf); //error
     while (1){
-        buf.length = MAX_UDP_PAYLOAD;
+        int length = MAX_UDP_PAYLOAD;
         struct sockaddr_storage sa;
         socklen_t salen = sizeof(addr);
-        int ret = recvfrom(sockfd, buf.data, buf.length, MSG_TRUNC,
+        int ret = recvfrom(sockfd, buf, length, MSG_TRUNC,
                 (struct sockaddr *) &sa, &salen);
         if (ret == -1); //error
-        if (buf.length < ret); //error
-        buf.length = ret;
-        struct message *m = message_parse(self, buf);
+        if (length < ret); //error
+        length = ret;
+        struct message *m = message_parse(self, buf, length);
         util_get_address(&m->address, (struct sockaddr *) &sa);
         message_enqueue_recv(self, m);
         // m is now owned by the recv thread
     }
     if (close(sockfd)); //error
+    free(buf);
 }
 
