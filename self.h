@@ -21,7 +21,8 @@
 #define RSA_PADDING RSA_PKCS1_OAEP_PADDING
 #define RSA_MESSAGE_MAX_LENGTH (RSA_MODULUS_LENGTH - 41)
 #define HMAC_KEY_LENGTH 16
-#define MAX_UDP_PAYLOAD 512
+#define UDP_RECV_THREADS 4
+#define UDP_MAX_PAYLOAD 512
 #define DEFAULT_BUCKET_SIZE 20
 #define DEFAULT_BUCKET_MAX_DEPTH 4
 
@@ -40,12 +41,15 @@ struct self {
     byte **authorized_keys;
     struct peers *peers;
     struct files *files;
-    struct {
-        struct message *head;
-        struct message *tail;
-        pthread_mutex_t mutex;
-        pthread_cond_t empty;
-    } recv_queue;
+    int udp_msg_socket;
+    pthread_mutex_t udp_recv_mutex;
+    pthread_cond_t udp_recv_cond;
+    // message buffer protected by udp_recv_mutex
+    // threads should test for !udp_recv_buf || !udp_recv_addr
+    //  || !udp_recv_length
+    byte *udp_recv_buf;
+    struct address *udp_recv_addr;
+    int udp_recv_length;
 };
 struct address {
     char *fqdn;
@@ -57,10 +61,11 @@ struct address {
 struct peer {
     byte *fingerprint;
     RSA *rsa_public_key;
-    struct address address;
+    struct address addr;
     // current sequence number in communication with this peer
     uint32_t sequence_no;
     byte hmac_key[HMAC_KEY_LENGTH];
+    time_t last_recv;
     //TODO: known file list for this node
     struct peer *next;
     struct peer *prev;
@@ -68,9 +73,8 @@ struct peer {
 enum message_class { request, response };
 enum message_type { key_exchange, find_peer, find_file, store_ref, command,
     resend, NUM_MESSAGE_TYPES };
+/*
 union request {
-    // key_exchange is requested on first communication with a peer
-    struct { byte public_key[PUB_KEY_LENGTH]; } key_exchange;
     // find_peer requests information about a specific fingerprint
     struct { byte *fingerprint; } find_peer;
     // find_file includes a file's hash, and returns a list of nearby peers,
@@ -100,21 +104,6 @@ union request {
     struct { uint32_t sequence_no; } resend;
 };
 union response {
-    // key_exchange responds with its public key, and an encrypted shared key
-    // (encrypted with the requester's public key) to be used for hmac on
-    // subsequent messages
-    // it immediately sends a second datagram with a signature of its
-    // fingerprint, and the hmac for that message
-    // the two response datagrams conclude the key exchange protocol, unless a
-    // resend is requested
-    union {
-        struct {
-            // encrypted hmac key, same length as RSA key
-            byte shared[RSA_MODULUS_LENGTH];
-            byte public[PUB_KEY_LENGTH];
-        } keys;
-        byte signature[RSA_MODULUS_LENGTH];
-    } key_exchange;
     // find_peer replies with a list of peers close to the requested, or the
     // address info of the peer
     union {
@@ -122,17 +111,9 @@ union response {
         byte **list;
         struct address addr;
     } find_peer;
-    struct {} find_file;
-    struct {} store_ref;
-    struct {} command;
-};
+}; */
 struct message {
-    struct peer *peer;
-    time_t time;
-    struct address address;
-    byte *hmac;
-    // used for received messages
-    bool hmac_valid;
+    byte hmac[DIGEST_LENGTH];
     // a given sequence_no uniquely identifies a message for that peer
     // note that since udp is unreliable, not all sequence numbers will be
     // received, and they won't necessarily be in order
@@ -140,11 +121,13 @@ struct message {
     uint32_t sequence_no;
     enum message_class class;
     enum message_type type;
-    byte *fingerprint;
-    union {
-        union request request;
-        union response response;
-    };
+    // recipient's fingerprint
+    byte fingerprint[DIGEST_LENGTH];
+    // message body
+    byte *data;
+    int length;
+    struct peer *peer;
+    struct address *addr;
     // for message queue
     struct message *next;
 };
@@ -159,20 +142,19 @@ void            hash_base64_encode(char *, byte *);
 int             hash_cmp(byte *, byte *);
 void            hash_distance(byte *, byte *, byte *);
 void            hash_rsa_fingerprint(byte *, RSA *);
-struct message *message_parse(struct self *, byte *, int);
-void            message_enqueue_recv(struct self *, struct message *);
-void *          message_dequeue_recv(void *);
+void *          message_recv_start(void *arg);
 struct message *message_new(enum message_class, enum message_type,
                     struct peer *);
-void            message_free(struct message *);
+void            message_send(struct self *, struct message *, byte *, int);
 struct peers *  peer_create_list();
 void            peer_read_table(struct peers *);
 struct peer *   peer_find(struct peers *, byte *);
 struct peer *   peer_add(struct peers *, byte *);
 void            peer_remove(struct peers *, struct peer *);
 void            protocol_key_exchange_recv(struct self *, struct message *);
-struct self *   self_load();
-void            self_run_daemon(struct self *);
+void            protocol_key_exchange_req(struct self *, byte *,
+                    struct address *);
+void            protocol_resend_req(struct self *, byte *, uint32_t);
 int             util_read_file(byte **, char *);
 void            util_write_file(char *, byte *, int);
 char *          util_base64_encode(byte *, int);
@@ -184,6 +166,8 @@ void            util_hmac(byte *, byte *, int, byte *);
 RSA *           util_read_rsa_pem(char *);
 void            util_rsa_encrypt(byte *, RSA *, byte *, int);
 int             util_rsa_decrypt(byte *, RSA *, byte *);
+void            util_rsa_sign(byte *, byte *, int, RSA *);
+bool            util_rsa_verify(byte *, byte *, int, RSA *);
 void            util_rsa_pub_encode(byte *, RSA *);
 RSA *           util_rsa_pub_decode(byte *);
 

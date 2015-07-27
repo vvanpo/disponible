@@ -92,6 +92,7 @@ struct peer *peer_add(struct peers *peers, byte *fingerprint){
     struct peer *peer = calloc(1, sizeof(struct peer));
     if (!peer); // system error
     memcpy(peer->fingerprint, fingerprint, DIGEST_LENGTH);
+    time(&peer->last_recv);
     if (b->head){
         peer->next = b->head;
         b->head->prev = peer;

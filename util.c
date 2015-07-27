@@ -200,13 +200,12 @@ RSA *util_read_rsa_pem(char *path){
 // 'out' must be of at least RSA_MODULUS_LENGTH bytes, and length can't be over
 // RSA_MESSAGE_MAX_LENGTH
 void util_rsa_encrypt(byte *out, RSA *rsa, byte *data, int length){
-    assert(length > RSA_MESSAGE_MAX_LENGTH);
+    assert(length <= RSA_MESSAGE_MAX_LENGTH);
     if(RSA_public_encrypt(length, data, out, rsa, RSA_PADDING) < 0); //error
 }
 
 // util_rsa_decrypt using the private key contained within 'rsa', and writes to
 // 'out', with the message length returned
-// 'data' and 'out' must be of at least RSA_MODULUS_LENGTH bytes
 // 'data' must be of at least RSA_MODULUS_LENGTH bytes, and 'out' of at least
 // RSA_MESSAGE_MAX_LENGTH bytes
 int util_rsa_decrypt(byte *out, RSA *rsa, byte *data){
@@ -217,13 +216,41 @@ int util_rsa_decrypt(byte *out, RSA *rsa, byte *data){
     return l;
 }
 
+// util_rsa_sign signs the message 'm' with the given rsa key
+// 'out' must be of RSA_MODULUS_LENGTH bytes
+void util_rsa_sign(byte *out, byte *m, int length, RSA *rsa){
+    if (length > RSA_MODULUS_LENGTH - 11){
+        byte tmp[DIGEST_LENGTH];
+        hash_digest(tmp, m, length);
+        m = tmp;
+        length = DIGEST_LENGTH;
+    }
+    unsigned int l;
+    if (!RSA_sign(NID_ripemd160, m, length, out, &l, rsa));
+        //error
+}
+
+// util_rsa_verify verifies an RSA signature 's' against message 'm'
+// 's' must be RSA_MODULUS_LENGTH bytes
+bool util_rsa_verify(byte *s, byte *m, int length, RSA *rsa){
+    if (length > RSA_MODULUS_LENGTH - 11){
+        byte tmp[DIGEST_LENGTH];
+        hash_digest(tmp, m, length);
+        m = tmp;
+        length = DIGEST_LENGTH;
+    }
+    if (RSA_verify(NID_ripemd160, m, length, s, RSA_MODULUS_LENGTH, rsa))
+        return true;
+    return false;  // possible error
+}
+
 // util_rsa_pub_encode encodes a public key for transfer
 // out must be of at least PUB_KEY_LENGTH bytes
 void util_rsa_pub_encode(byte *out, RSA *rsa){
     memset(out, 0, PUB_KEY_LENGTH);
-    if (BN_bn2bin(rsa->e, out) <= RSA_EXPONENT_LENGTH) assert(true);
-    if (BN_bn2bin(rsa->n, out + RSA_EXPONENT_LENGTH) == RSA_MODULUS_LENGTH)
-        assert(true);
+    if (BN_bn2bin(rsa->e, out) > RSA_EXPONENT_LENGTH) assert(false);
+    if (BN_bn2bin(rsa->n, out + RSA_EXPONENT_LENGTH) != RSA_MODULUS_LENGTH)
+        assert(false);
 }
 
 // util_rsa_pub_decode takes an array of PUB_KEY_LENGTH bytes and writes its
