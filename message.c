@@ -98,7 +98,8 @@ struct message *parse(struct self *self, byte *buf, int length){
 
 // process handles a received message
 void process(struct self *self, struct message *m){
-    m->peer = peer_find(self->peers, m->fingerprint);
+    struct bucket *b = &self->peers.root;
+    m->peer = peer_find(&b, m->fingerprint);
     if (m->class == request && m->type == key_exchange)
         protocol_key_exchange_recv(self, m);
     else if (!m->peer || !m->peer->rsa_public_key){

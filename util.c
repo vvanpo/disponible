@@ -39,7 +39,7 @@ int util_read_file(byte **out, char *path){
 }
 
 // util_write_file atomically creates or overwrites the given file with the data
-// in the 'in' of length 'length'
+// in 'in' of 'length' bytes
 void util_write_file(char *path, byte *in, int length){
     // + 2 to account for NULL-termination
     char *tmp = calloc(1, strlen(path) + 2);
@@ -59,14 +59,11 @@ void util_write_file(char *path, byte *in, int length){
     free(tmp);
 }
 
-// util_base64_encode returns base64-encoded values as per rfc4648
-char *util_base64_encode(byte *in, int length){
-    // output buffer needs to be divisible by 4, plus one extra byte for null-
-    // termination
-    int l = (4 * ((length + 2) / 3)) + 1;
-    char *out = malloc(l);
-    if (!out); //error
-    out[l - 1] = '\0';
+// util_base64_encode writes base64-encoded values as per rfc4648 to 'out'
+// 'out' must be of at least util_base64_encoded_size(length) + 1 bytes (for
+// NULL-termination)
+void util_base64_encode(char *out, byte *in, int length){
+    out[util_base64_encoded_size(length)] = '\0';
     for (int i = 0, j = 0; i < length; i += 3){
         unsigned int grp =  in[i] << 16;
         if (length - i > 1) grp += in[i + 1] << 8;
@@ -87,24 +84,16 @@ char *util_base64_encode(byte *in, int length){
         }
         j += 4;
     }
-    return out;
 }
 
-// util_base64_decode takes base64-encoded values as per rfc4648, and writes 
-// the decoded output to *out, returning the number of bytes written
+// util_base64_decode takes a base64-encoded value as per rfc4648, and writes
+// the decoded output to 'out'
+// 'out' must be of at least util_base64_decoded_size(in) bytes
 //TODO: does not handle concatenated base64 streams delineated with padding
 // characters
-int util_base64_decode(byte **out, char *in){
-    *out = NULL;
-    if (!in) return 0;
+void util_base64_decode(byte *out, char *in){
+    assert(out && in);
     int length = strlen(in);
-    if (length % 4); //error invalid format
-    // determine length of output buffer first
-    int l = 3 * length / 4;
-    if (in[length - 1] == '=') l -= 1;
-    if (in[length - 2] == '=') l -= 1;
-    *out = malloc(l);
-    if (!out); //error
     for (int i = 0, j = 0; i < length; i += 4){
         int grp = 0;
         for (int k = 0; k < 4; k++){
@@ -118,11 +107,28 @@ int util_base64_decode(byte **out, char *in){
             else ; //error invalid character
             grp += n << (18 - k * 6);
         }
-        for (int k = 0; k < 3 && k + j < l; k++){
-            (*out)[k + j] = (byte) (0xff & (grp >> (16 - k * 8)));
+        for (int k = 0; k < 3 && k + j < util_base64_decoded_size(in); k++){
+            out[k + j] = (byte) (0xff & (grp >> (16 - k * 8)));
         }
         j += 3;
     }
+}
+
+// util_base64_encoded_size returns the number of chars it would take to encode
+// a buffer of size 'length'
+int util_base64_encoded_size(int length){
+    return 4 * ((length + 2) / 3);
+}
+
+// util_base64_decoded_size returns the number of bytes it would take to decode
+// 'in' (base64 strings need to be divisible by 4)
+int util_base64_decoded_size(char *in){
+    int length = strlen(in);
+    if (!length) return 0;
+    assert(length % 4 == 0); // invalid format
+    int l = 3 * length / 4;
+    if (in[length - 1] == '=') l -= 1;
+    if (in[length - 2] == '=') l -= 1;
     return l;
 }
 
@@ -201,7 +207,7 @@ RSA *util_read_rsa_pem(char *path){
 // RSA_MESSAGE_MAX_LENGTH
 void util_rsa_encrypt(byte *out, RSA *rsa, byte *data, int length){
     assert(length <= RSA_MESSAGE_MAX_LENGTH);
-    if(RSA_public_encrypt(length, data, out, rsa, RSA_PADDING) < 0); //error
+    if (RSA_public_encrypt(length, data, out, rsa, RSA_PADDING) < 0); //error
 }
 
 // util_rsa_decrypt using the private key contained within 'rsa', and writes to

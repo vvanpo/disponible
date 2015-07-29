@@ -32,14 +32,6 @@ void hash_file_digest(byte *hash, char *path){
     if (!RIPEMD160_Final(hash, &c)); //error
 }
 
-// hash_base64_encode writes base64-encoded values as per rfc4648 to 'out'
-// out must be at least B64_DIGEST_LENGTH bytes
-void hash_base64_encode(char *out, byte *hash){
-    char *tmp = util_base64_encode(hash, DIGEST_LENGTH);
-    memcpy(out, tmp, B64_DIGEST_LENGTH);
-    free(tmp);
-}
-
 // hash_cmp returns returns < 0, 0, or > 0 if h1 is closer than, the same, or
 // further than h2 according to the distance metric
 int hash_cmp(byte *h1, byte *h2){

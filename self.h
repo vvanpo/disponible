@@ -4,6 +4,7 @@
 /// includes
 #include <arpa/inet.h>
 #include <assert.h>
+#include <dirent.h>
 #include <openssl/ripemd.h>
 #include <openssl/rsa.h>
 #include <pthread.h>
@@ -21,13 +22,50 @@
 #define RSA_PADDING RSA_PKCS1_OAEP_PADDING
 #define RSA_MESSAGE_MAX_LENGTH (RSA_MODULUS_LENGTH - 41)
 #define HMAC_KEY_LENGTH 16
-#define UDP_RECV_THREADS 4
+#define UDP_RECV_THREADS 2
 #define UDP_MAX_PAYLOAD 512
 #define DEFAULT_BUCKET_SIZE 20
 #define DEFAULT_BUCKET_MAX_DEPTH 4
 
 /// type definitions
 typedef unsigned char byte;
+struct bucket {
+    // buckets are sorted in an ordered binary tree
+    // the root bucket has prefix_length = 0, and therefore depth = 0
+    int prefix_length;
+    // non-local depth, i.e. the distance up the tree to a local bucket (one
+    // containing the local node)
+    int depth;
+    // bits past prefix_length are 0
+    byte prefix[DIGEST_LENGTH];
+    // head of the peer list, non-NULL only for leaf buckets
+    // the test for a leaf bucket is a non-NULL head, so empty leaves must get
+    // merged
+    struct peer *head;
+    // number of peers in (leaf) bucket
+    int count;
+    struct bucket *parent;
+    // a leaf bucket still make use of child pointers, by using them as a
+    // shortcut to the nearest leaf buckets, i.e. all leaf buckets are ordered
+    // in a doubly-linked list
+    struct bucket *left;
+    struct bucket *right;
+};
+struct peers {
+    // peers are sorted into the buckets that correspond with their distance
+    // a peer is sorted into bucket n if 2^n <= distance(peer) < 2^(n+1)
+    // peers per bucket
+    int bucket_size;
+    // the number of times a non-local bucket (one not containing this node's
+    // hash) can be split
+    int max_depth;
+    // tree of buckets
+    struct bucket root;
+    //TODO: remote file table (with hashes close to this node) with pointers to
+    // known peers
+    //TODO: add special 'swarm' bucket for extra peers transferring files to
+    // this node
+};
 struct self {
     struct {
         char *file_folder;
@@ -35,12 +73,15 @@ struct self {
         int tcp_port;
         int bucket_size;
         int bucket_max_depth;
+        // should be able to specify either fingerprint, or fqdn (as hosts can
+        // be expected to periodically change their keys)
+        byte **permanent_peers;
     } config;
     byte fingerprint[DIGEST_LENGTH];
     RSA *rsa_key;
     byte **authorized_keys;
-    struct peers *peers;
-    struct files *files;
+    struct peers peers;
+    //struct files files;
     int udp_msg_socket;
     pthread_mutex_t udp_recv_mutex;
     pthread_cond_t udp_recv_cond;
@@ -59,12 +100,12 @@ struct address {
     int tcp_port;
 };
 struct peer {
-    byte *fingerprint;
+    byte fingerprint[DIGEST_LENGTH];
     RSA *rsa_public_key;
     struct address addr;
+    byte hmac_key[HMAC_KEY_LENGTH];
     // current sequence number in communication with this peer
     uint32_t sequence_no;
-    byte hmac_key[HMAC_KEY_LENGTH];
     time_t last_recv;
     //TODO: known file list for this node
     struct peer *next;
@@ -138,7 +179,6 @@ files *         file_create_list();
 void            file_read_table(files *);
 void            hash_digest(byte *, byte *, int);
 void            hash_file_digest(byte *, char *);
-void            hash_base64_encode(char *, byte *);
 int             hash_cmp(byte *, byte *);
 void            hash_distance(byte *, byte *, byte *);
 void            hash_rsa_fingerprint(byte *, RSA *);
@@ -146,9 +186,9 @@ void *          message_recv_start(void *arg);
 struct message *message_new(enum message_class, enum message_type,
                     struct peer *);
 void            message_send(struct self *, struct message *, byte *, int);
-struct peers *  peer_create_list();
-void            peer_read_table(struct peers *);
-struct peer *   peer_find(struct peers *, byte *);
+void            peer_create_tree(struct peers *);
+void            peer_read_tree(struct peers *, DIR *);
+struct peer *   peer_find(struct bucket **, byte *);
 struct peer *   peer_add(struct peers *, byte *);
 void            peer_remove(struct peers *, struct peer *);
 void            protocol_key_exchange_recv(struct self *, struct message *);
@@ -157,8 +197,10 @@ void            protocol_key_exchange_req(struct self *, byte *,
 void            protocol_resend_req(struct self *, byte *, uint32_t);
 int             util_read_file(byte **, char *);
 void            util_write_file(char *, byte *, int);
-char *          util_base64_encode(byte *, int);
-int             util_base64_decode(byte **, char *);
+void            util_base64_encode(char *, byte *, int);
+void            util_base64_decode(byte *, char *);
+int             util_base64_encoded_size(int);
+int             util_base64_decoded_size(char *);
 void            util_get_address(struct address *, struct sockaddr *);
 struct sockaddr *util_get_sockaddr(struct sockaddr_storage *, struct address *);
 void            util_hmac_key(byte *);

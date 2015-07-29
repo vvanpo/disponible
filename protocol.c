@@ -6,6 +6,7 @@
 static bool check_integrity(struct message *);
 
 // protocol_key_exchange_recv handles received key_exchange messages
+//TODO: use SCTP or TCP for key_exchange
 void protocol_key_exchange_recv(struct self *self, struct message *m){
     byte *data = m->data;
     struct peer *peer = m->peer;
@@ -14,7 +15,7 @@ void protocol_key_exchange_recv(struct self *self, struct message *m){
         if (m->length != PUB_KEY_LENGTH); // peer/network error
         // if peer is unknown, add it to the list
         if (!peer){
-            peer = peer_add(self->peers, m->fingerprint);
+            peer = peer_add(&self->peers, m->fingerprint);
             // if the list is full, reject the peer by non-response
             if (!peer){
                 free(data);

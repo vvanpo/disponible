@@ -31,8 +31,8 @@ enum di_error di_daemon_run(struct di_daemon *d){
     return DI_ESUCCESS;
 }
 
-// self_load loads all the necessary data structures into self required for
-// starting the daemon
+// self_init loads all the necessary data structures into a 'struct self'
+// required for starting the daemon
 struct self *self_init(){
     struct self *self = calloc(1, sizeof(struct self));
     if (!self); //error
@@ -41,8 +41,14 @@ struct self *self_init(){
     byte tmp[PUB_KEY_LENGTH];
     util_rsa_pub_encode(tmp, self->rsa_key);
     hash_digest(self->fingerprint, tmp, PUB_KEY_LENGTH);
-    self->peers = peer_create_list();
-    peer_read_table(self->peers);
+    peer_create_tree(&self->peers);
+    DIR *root = opendir("peers");
+    if (!root) {
+        if (errno == EACCES || errno == ENOENT || errno == ENOTDIR)
+            ; // user error
+        else ; // system error
+    }
+    peer_read_tree(&self->peers, root);
     //self->files = file_create_list();
     //file_read_table(self->files);
     int err = pthread_mutex_init(&self->udp_recv_mutex, NULL);
@@ -69,14 +75,6 @@ void self_run_daemon(struct self *self){
         int err = pthread_join(recv_thread[i], NULL);
         if (err); //error
     }
-}
-
-// load_config sets self->config values to those in the config file, or the
-// defaults if absent
-void load_config(struct self *self){
-    //buffer file = read_file("config");
-    self->config.file_folder = "";
-    self->config.udp_port = 1024;
 }
 
 // self_listen opens the configured socket and begins a listener thread to
@@ -137,6 +135,14 @@ void self_listen(struct self *self){
     free(buf);
     self->udp_msg_socket = 0;
     if (close(sockfd)); //error
+}
+
+// load_config sets self->config values to those in the config file, or the
+// defaults if absent
+void load_config(struct self *self){
+    //buffer file = read_file("config");
+    self->config.file_folder = "";
+    self->config.udp_port = 1024;
 }
 
 // try_bind tries to bind to the configured port, but if it is busy or not
