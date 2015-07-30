@@ -188,6 +188,7 @@ struct message *message_new(enum message_class, enum message_type,
 void            message_send(struct self *, struct message *, byte *, int);
 void            peer_create_tree(struct peers *);
 void            peer_read_tree(struct peers *, DIR *);
+void            peer_write_tree(struct bucket *, int);
 struct peer *   peer_find(struct bucket **, byte *);
 struct peer *   peer_add(struct peers *, byte *);
 void            peer_remove(struct peers *, struct peer *);

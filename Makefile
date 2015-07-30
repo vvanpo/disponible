@@ -1,5 +1,5 @@
 CC=cc
-CFLAGS=-g -Wall -lcrypto -pthread
+CFLAGS=-g -Wall -Wno-parentheses -lcrypto -pthread
 DEPS=self.h
 OBJ=main.o self.o peer.o message.o protocol.o hash.o util.o #file.o client.o
 NAME=disponible

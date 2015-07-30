@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/pem.h>
 #include <stdio.h>
@@ -254,6 +255,7 @@ bool util_rsa_verify(byte *s, byte *m, int length, RSA *rsa){
 // out must be of at least PUB_KEY_LENGTH bytes
 void util_rsa_pub_encode(byte *out, RSA *rsa){
     memset(out, 0, PUB_KEY_LENGTH);
+    if (!rsa->e || !rsa->n) assert(false);
     if (BN_bn2bin(rsa->e, out) > RSA_EXPONENT_LENGTH) assert(false);
     if (BN_bn2bin(rsa->n, out + RSA_EXPONENT_LENGTH) != RSA_MODULUS_LENGTH)
         assert(false);
@@ -263,8 +265,9 @@ void util_rsa_pub_encode(byte *out, RSA *rsa){
 // values to an RSA object
 RSA *util_rsa_pub_decode(byte *in){
     RSA *rsa = RSA_new();
-    if (BN_bin2bn(in, RSA_EXPONENT_LENGTH, rsa->e)); //error
-    if (BN_bin2bn(in + RSA_EXPONENT_LENGTH, RSA_MODULUS_LENGTH, rsa->n));
-        //error
+    rsa->e = BN_bin2bn(in, RSA_EXPONENT_LENGTH, NULL);
+    rsa->n = BN_bin2bn(in + RSA_EXPONENT_LENGTH, RSA_MODULUS_LENGTH, NULL);
+    if (!rsa->e || !rsa->n)
+        ERR_print_errors_fp(stderr);
     return rsa;
 }

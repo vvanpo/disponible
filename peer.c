@@ -13,6 +13,7 @@
 static void split_bucket(struct peers *, struct bucket *);
 static void merge_buckets(struct bucket *);
 static void parse_bucket(struct peers *, char *, int);
+static void write_bucket(char **, struct bucket *);
 
 // peer_create_list initializes a peers object
 void peer_create_tree(struct peers *peers){
@@ -32,13 +33,12 @@ void peer_create_tree(struct peers *peers){
 //  prefix 'deadbeef'
 void peer_read_tree(struct peers *peers, DIR *rootdp){
     struct dirent de, *result;
-    int err;
+    struct stat sb;
+    int err, rootfd = dirfd(rootdp);
+    assert(rootfd > 0);
     while (!(err = readdir_r(rootdp, &de, &result)) && result){
         // ignore hidden files and directories
         if (*de.d_name == '.') continue;
-        struct stat sb;
-        int rootfd = dirfd(rootdp);
-        assert(rootfd > 0);
         if (fstatat(rootfd, de.d_name, &sb, 0)) break; // error
         if (S_ISDIR(sb.st_mode) || S_ISREG(sb.st_mode)){
             int fd = openat(rootfd, de.d_name, O_RDONLY);
@@ -69,6 +69,41 @@ void peer_read_tree(struct peers *peers, DIR *rootdp){
     if (closedir(rootdp)) assert(false);
 }
 
+// peer_write_tree updates the local peer tree, rewriting each bucket file
+void peer_write_tree(struct bucket *b, int fd){
+    // ddd-xx\0
+    char i, j, name[7];
+    sprintf(name, "%d-", b->prefix_length);
+    i = (b->prefix[b->prefix_length / 8] & 0xf0) >> 4;
+    j = b->prefix[b->prefix_length / 8] & 0x0f;
+    i += i < 10 ? '0' : 'a';
+    j += j < 10 ? '0' : 'a';
+    name[5] = i;
+    name[6] = j;
+    if (!b->head){
+        if (!b->left && !b->right){
+            assert(!b->parent); // assert root bucket
+            return;
+        }
+        assert(b->left && b->right);
+        if (!(b->prefix_length % 8)){
+            // non-leaf buckets can only form directories
+            if (mkdirat(fd, name, 0777)); //error
+            if ((fd = openat(fd, name, 0)) == -1); // error
+            peer_write_tree(b->left, fd);
+            peer_write_tree(b->right, fd);
+            if (close(fd)); // system error
+            return;
+        }
+        peer_write_tree(b->left, fd);
+        peer_write_tree(b->right, fd);
+        return;
+    }
+    char *buf;
+    write_bucket(&buf, b);
+    util_write_file(name, (byte *) buf, strlen(buf));
+}
+
 // peer_find traverses the peer tree and returns the peer corresponding to the
 // passed fingerprint, and updates *b to the peer's bucket
 // if the peer is absent, peer_find returns NULL and updates *b to the bucket
@@ -92,8 +127,10 @@ struct peer *peer_find(struct bucket **b, byte *fingerprint){
 struct peer *peer_add(struct peers *peers, byte *fingerprint){
     struct bucket *b = &peers->root;
     //TODO add bucket structure mutex
-    if (peer_find(&b, fingerprint)) return NULL;
-    if (b->count == peers->bucket_size){
+    // Special case when tree is empty
+    if (!b->head && !b->left);
+    else if (peer_find(&b, fingerprint)) return NULL;
+    else if (b->count == peers->bucket_size){
         if (b->depth == peers->max_depth)
             // bucket can't be split, range is full
             //TODO: test responsiveness of existing peers
@@ -104,7 +141,6 @@ struct peer *peer_add(struct peers *peers, byte *fingerprint){
     struct peer *peer = calloc(1, sizeof(struct peer));
     if (!peer); // system error
     memcpy(peer->fingerprint, fingerprint, DIGEST_LENGTH);
-    time(&peer->last_recv);
     if (b->head){
         peer->next = b->head;
         b->head->prev = peer;
@@ -149,9 +185,12 @@ void split_bucket(struct peers *peers, struct bucket *b){
     left->prefix_length = right->prefix_length = pref_len;
     left->depth = right->depth = b->depth + 1;
     left->parent = right->parent = b;
+    // copy parent prefix and increment
     memcpy(left->prefix, b->prefix, DIGEST_LENGTH);
     left->prefix[pref_len / 8] |= 1 << (8 - (pref_len % 8));
+    // right has the same hash as parent but with prefix_length + 1
     memcpy(right->prefix, b->prefix, DIGEST_LENGTH);
+    // connect leaf linked list
     left->right = right;
     right->left = left;
     if (b->left){
@@ -223,14 +262,19 @@ void merge_buckets(struct bucket *parent){
 // peer ordering in the bucket file is according to availability/uptime of the
 // peer
 void parse_bucket(struct peers *peers, char *p, int l){
+    int num_peers = 0;
     while(0 < l){
+        struct address addr;
+        if (num_peers == 20); // user error
         // extract public key
         char *tmp = strstr(p, "\n    ");
-        if (!tmp || tmp > p); // user error
+        if (!tmp || tmp > p + l); // user error
         if (tmp - p != util_base64_encoded_size(PUB_KEY_LENGTH)); // user error
         tmp[0] = '\0';
         byte pub_key[PUB_KEY_LENGTH];
+        byte fingerprint[DIGEST_LENGTH];
         util_base64_decode(pub_key, p);
+        hash_digest(fingerprint, pub_key, PUB_KEY_LENGTH);
         l -= tmp + 5 - p;
         p = tmp + 5;
         // extract fqdn or IP and port
@@ -238,7 +282,7 @@ void parse_bucket(struct peers *peers, char *p, int l){
         for (; i < l && p[i] != ' '; i++);
         if (i == l || p[i] != ' '); // user error
         p[i] = '\0';
-        struct address addr;
+        memset(&addr, 0, sizeof(struct address));
         if (*p == '['){
             tmp = memchr(p, ']', i);
             if (!tmp || *(tmp + 1) != ':'); // user error
@@ -248,14 +292,11 @@ void parse_bucket(struct peers *peers, char *p, int l){
             tmp += 2;
         }
         else {
-            tmp = memchr(p, ':', i);
-            if (!tmp); // user error
+            if (!(tmp = memchr(p, ':', i))); // user error
             *tmp = '\0';
             if (!inet_pton(AF_INET, p, addr.ip)){
-                addr.fqdn = malloc(strlen(p) + 1);
-                if (!addr.fqdn); // system error
-                strcpy(addr.fqdn, p);
-                if (strlen(addr.fqdn) != tmp - p); // user error
+                if (!(addr.fqdn = malloc(strlen(p) + 1))); // system error
+                if (strlen(strcpy(addr.fqdn, p)) != tmp - p); // user error
                 //TOOD: check fqdn integrity
             }
             tmp++;
@@ -291,9 +332,50 @@ void parse_bucket(struct peers *peers, char *p, int l){
             if (!(p[i] <= '9' && p[i] >= '0')); // user error
             last_recv += p[i] - '0';
         }
+        if (last_recv > time(NULL)); // user error
         if (i == l) break;
         else if (p[i] != '\n'); // user error
         p += i + 1;
         l -= i + 1;
+        struct peer *peer = peer_add(peers, fingerprint);
+        if (!peer); // user error, duplicate
+        peer->rsa_public_key = util_rsa_pub_decode(pub_key);
+        memcpy(&peer->addr, &addr, sizeof(struct address));
+        memcpy(peer->hmac_key, hmac_key, HMAC_KEY_LENGTH);
+        peer->sequence_no = (uint32_t) sequence_no;
+        peer->last_recv = last_recv;
+        num_peers++;
     }
+}
+
+// write_bucket allocates a buffer in *out
+void write_bucket(char **out, struct bucket *b){
+    int l = 0;
+    char *p = malloc(1024);
+    if (!p); // system error
+    for (struct peer *peer = b->head; peer; peer = peer->next){
+        if (p = realloc(p, l + 1024)); // system error
+        // write base64 public key
+        byte pub_key[PUB_KEY_LENGTH];
+        util_rsa_pub_encode(pub_key, peer->rsa_public_key);
+        util_base64_encode(p + l, pub_key, PUB_KEY_LENGTH);
+        l += util_base64_encoded_size(PUB_KEY_LENGTH);
+        strcpy(p + l, "\n    ");
+        l += 5;
+        if (peer->addr.fqdn) strcpy(p + l, peer->addr.fqdn);
+        else if (peer->addr.ip_version == ipv4)
+            inet_ntop(AF_INET, peer->addr.ip, p + l, INET_ADDRSTRLEN);
+        else {
+            p[l++] = '[';
+            inet_ntop(AF_INET6, peer->addr.ip, p + l, INET6_ADDRSTRLEN);
+        }
+        l += strlen(p + l);
+        if (peer->addr.ip_version == ipv6 && !peer->addr.fqdn) p[l++] = ']';
+        l += sprintf(p + l, ":%d ", peer->addr.udp_port);
+        util_base64_encode(p + l, peer->hmac_key, HMAC_KEY_LENGTH);
+        l += util_base64_encoded_size(HMAC_KEY_LENGTH);
+        l += sprintf(p + l, " %d %ld\n", peer->sequence_no, peer->last_recv);
+    }
+    p[l] = '\0';
+    *out = p;
 }
