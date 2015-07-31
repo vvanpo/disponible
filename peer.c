@@ -31,6 +31,8 @@ void peer_create_tree(struct peers *peers){
 // e.g. file '32-ef' in the directory that represents prefix 'deadbe' (i.e. the
 //  hierarchy 'peers/8-de/16-ad/24-be/') would represent the leaf bucket with
 //  prefix 'deadbeef'
+// finally, for first-time use there is a list of peers in a file called
+// 'bootstrap'
 void peer_read_tree(struct peers *peers, DIR *rootdp){
     struct dirent de, *result;
     struct stat sb;
@@ -40,6 +42,7 @@ void peer_read_tree(struct peers *peers, DIR *rootdp){
         // ignore hidden files and directories
         if (*de.d_name == '.') continue;
         if (fstatat(rootfd, de.d_name, &sb, 0)) break; // error
+        //TODO: error-check file/folder names and prefixes
         if (S_ISDIR(sb.st_mode) || S_ISREG(sb.st_mode)){
             int fd = openat(rootfd, de.d_name, O_RDONLY);
             if (fd == -1){
@@ -69,17 +72,15 @@ void peer_read_tree(struct peers *peers, DIR *rootdp){
     if (closedir(rootdp)) assert(false);
 }
 
-// peer_write_tree updates the local peer tree, rewriting each bucket file
+// peer_write_tree writes the local peer tree, assumes an empty peers directory
 void peer_write_tree(struct bucket *b, int fd){
     // ddd-xx\0
     char i, j, name[7];
-    sprintf(name, "%d-", b->prefix_length);
     i = (b->prefix[b->prefix_length / 8] & 0xf0) >> 4;
     j = b->prefix[b->prefix_length / 8] & 0x0f;
     i += i < 10 ? '0' : 'a';
     j += j < 10 ? '0' : 'a';
-    name[5] = i;
-    name[6] = j;
+    sprintf(name, "%d-%c%c", b->prefix_length, i, j);
     if (!b->head){
         if (!b->left && !b->right){
             assert(!b->parent); // assert root bucket
@@ -111,7 +112,7 @@ void peer_write_tree(struct bucket *b, int fd){
 // *b needs to be initialized to where peer_find should begin the search,
 // usually to peers.root
 struct peer *peer_find(struct bucket **b, byte *fingerprint){
-    assert(*b);
+    assert(b && *b && fingerprint);
     while (!(*b)->head){
         if (hash_cmp(fingerprint, (*b)->left->prefix) < 0) *b = (*b)->right;
         else *b = (*b)->left;
@@ -257,8 +258,7 @@ void merge_buckets(struct bucket *parent){
 // file format consists of each peer on a 2-line block, the first line
 // consisting of their base64-encoded public key, the second line beginning with
 // a 4-space indent followed by their fqdn or IP address and port number,
-// base64-encoded hmac key, sequence number, and last-received timestamp,
-// delimited by spaces
+// base64-encoded hmac key, and sequence number, delimited by spaces
 // peer ordering in the bucket file is according to availability/uptime of the
 // peer
 void parse_bucket(struct peers *peers, char *p, int l){
@@ -325,30 +325,19 @@ void parse_bucket(struct peers *peers, char *p, int l){
         if (*tmp != '\0' || sequence_no < 0); // user error
         p += i + 1;
         l -= i + 1;
-        // extract last received time
-        time_t last_recv = 0;
-        for (i = 0; i < l && p[i] != '\n'; i++){
-            last_recv *= 10;
-            if (!(p[i] <= '9' && p[i] >= '0')); // user error
-            last_recv += p[i] - '0';
-        }
-        if (last_recv > time(NULL)); // user error
-        if (i == l) break;
-        else if (p[i] != '\n'); // user error
-        p += i + 1;
-        l -= i + 1;
+        // add peer
         struct peer *peer = peer_add(peers, fingerprint);
         if (!peer); // user error, duplicate
         peer->rsa_public_key = util_rsa_pub_decode(pub_key);
         memcpy(&peer->addr, &addr, sizeof(struct address));
         memcpy(peer->hmac_key, hmac_key, HMAC_KEY_LENGTH);
         peer->sequence_no = (uint32_t) sequence_no;
-        peer->last_recv = last_recv;
         num_peers++;
     }
 }
 
-// write_bucket allocates a buffer in *out
+// write_bucket allocates a buffer in *out and writes the bucket's contents to
+// it
 void write_bucket(char **out, struct bucket *b){
     int l = 0;
     char *p = malloc(1024);
@@ -374,7 +363,7 @@ void write_bucket(char **out, struct bucket *b){
         l += sprintf(p + l, ":%d ", peer->addr.udp_port);
         util_base64_encode(p + l, peer->hmac_key, HMAC_KEY_LENGTH);
         l += util_base64_encoded_size(HMAC_KEY_LENGTH);
-        l += sprintf(p + l, " %d %ld\n", peer->sequence_no, peer->last_recv);
+        l += sprintf(p + l, " %d\n", peer->sequence_no);
     }
     p[l] = '\0';
     *out = p;

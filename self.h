@@ -106,7 +106,11 @@ struct peer {
     byte hmac_key[HMAC_KEY_LENGTH];
     // current sequence number in communication with this peer
     uint32_t sequence_no;
-    time_t last_recv;
+    // peer has been responsive since this timestamp
+    // if uptime_since is 0, peer failed to respond to most recent request, or
+    // the node loaded the peer from its local tree on startup and hasn't had a
+    // need to send a request yet
+    time_t uptime_since;
     //TODO: known file list for this node
     struct peer *next;
     struct peer *prev;

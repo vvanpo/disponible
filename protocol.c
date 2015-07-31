@@ -24,8 +24,8 @@ void protocol_key_exchange_recv(struct self *self, struct message *m){
             }
             memcpy(peer->fingerprint, m->fingerprint, DIGEST_LENGTH);
         }
-        // update peer last-seen time
-        time(&peer->last_recv);
+        // update peer uptime timestamp
+        time(&peer->uptime_since);
         // create new hmac key
         util_hmac_key(peer->hmac_key);
         memcpy(&peer->addr, m->addr, sizeof(struct address));
@@ -107,8 +107,6 @@ bool check_integrity(struct message *m){
             free(m);
             return false;
         }
-        // update peer last-seen time
-        time(&m->peer->last_recv);
         // update peer address
         m->peer->addr.ip_version = m->addr->ip_version;
         memcpy(m->peer->addr.ip, m->addr->ip, 16);
