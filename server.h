@@ -13,12 +13,21 @@ enum dsp_srv_config {
     DSP_SRV_PORT_TCP,
     DSP_SRV_PORT_UDP,
     DSP_SRV_FILE_DIR,
+    DSP_SRV_REMOTE_FILES,
+    DSP_SRV_FILE_BLACKLIST,
 };
+
+struct dsp_server;
 
 int dsp_srv_setup(char *path);
 // *value is allocated and must be freed after use
 int dsp_srv_get_config(char **value, enum dsp_srv_config option, char *path);
 int dsp_srv_set_config(enum dsp_srv_config option, char *command, char *path);
 int dsp_srv_bootstrap(char *path);
+
+int dsp_srv_start(struct **dsp_server server, char *path);
+int dsp_srv_stop(struct *dsp_server server);
+
+int dsp_srv_get_file(struct *dsp_server server);
 
 #endif
