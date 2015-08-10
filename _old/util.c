@@ -173,6 +173,34 @@ char *util_get_fqdn(struct sockaddr *sa, socklen_t salen){
     return host;
 }
 
+// util_parse_address takes an address of the form (fqdn|ip):port and stores it
+// in the address structure 'a'
+void util_parse_address(struct address *a, char *s){
+    int l = strlen(s);
+    char *tmp;
+    if (*s == '['){
+        tmp = memchr(s, ']', l);
+        if (!tmp || tmp - s == l || *(tmp + 1) != ':'); // user error
+        *tmp = '\0';
+        if (!inet_pton(AF_INET6, s + 1, a->ip)); // user error
+        a->ip_version = ipv6;
+        tmp += 2;
+    }
+    else {
+        if (!(tmp = memchr(s, ':', l)) || tmp - s == l); // user error
+        *tmp = '\0';
+        if (!inet_pton(AF_INET, s, a->ip)){
+            if (!(a->fqdn = realloc(a->fqdn, strlen(s) + 1))); // system error
+            if (strlen(strcpy(a->fqdn, s)) != tmp - s); // user error
+            //TOOD: check fqdn integrity
+        }
+        tmp++;
+    }
+    long port = strtol(tmp, &tmp, 10);
+    if (*tmp != '\0' || port > 0xffff); // user error
+    a->udp_port = (uint16_t) port;
+}
+
 // util_hmac_key initializes a new random shared key
 void util_hmac_key(byte *key){
     int fd = open("/dev/urandom", O_RDONLY);

@@ -12,7 +12,7 @@
 //static void write_peer_table(struct peers *);
 static void split_bucket(struct peers *, struct bucket *);
 static void merge_buckets(struct bucket *);
-static void parse_bucket(struct peers *, char *, int);
+static void parse_bucket(struct peers *, char *);
 static void write_bucket(char **, struct bucket *);
 
 // peer_create_list initializes a peers object
@@ -26,13 +26,11 @@ void peer_create_tree(struct peers *peers){
 // the directory hierarchy mimics the tree structure of buckets, but skips
 // nodes in groups of 8, i.e. up to 2^8 nodes in a given directory
 // nodes (directories and bucket files) are named corresponding to their sub-
-// prefix in relation to their parent directory (in hexadecimal), and pre-pended
-// by their prefix_length (in decimal) and a dash
+// prefix in relation to their parent directory (in hexadecimal), and bucket
+// files are pre-pended by their prefix_length (in decimal) and a dash
 // e.g. file '32-ef' in the directory that represents prefix 'deadbe' (i.e. the
-//  hierarchy 'peers/8-de/16-ad/24-be/') would represent the leaf bucket with
-//  prefix 'deadbeef'
-// finally, for first-time use there is a list of peers in a file called
-// 'bootstrap'
+//  hierarchy 'peers/de/ad/be/') would represent the leaf bucket with prefix
+//  'deadbeef'
 void peer_read_tree(struct peers *peers, DIR *rootdp){
     struct dirent de, *result;
     struct stat sb;
@@ -55,14 +53,15 @@ void peer_read_tree(struct peers *peers, DIR *rootdp){
                 peer_read_tree(peers, dp);
             }
             else if (S_ISREG(sb.st_mode)){
-                byte *buf = malloc(sb.st_size);
+                byte *buf = malloc(sb.st_size + 1);
                 if (!buf); // system error
                 int i = 0;
                 for (int ret = 0; sb.st_size - i &&
                         (ret = read(fd, buf + i, sb.st_size - i)); i += ret)
                     if (ret == -1); // system error
                 if (close(fd)); // system error
-                parse_bucket(peers, (char *) buf, i);
+                buf[i] = '\0';
+                parse_bucket(peers, (char *) buf);
                 free(buf);
             }
         }
@@ -179,9 +178,9 @@ void split_bucket(struct peers *peers, struct bucket *b){
     assert(b->depth < peers->max_depth);
     assert(!b->left && !b->right);
     struct bucket *left = calloc(1, sizeof(struct bucket));
-    if (!b->left); //error
+    if (!b->left); // system error
     struct bucket *right = calloc(1, sizeof(struct bucket));
-    if (!b->right); //error
+    if (!b->right); // system error
     int pref_len = b->prefix_length + 1;
     left->prefix_length = right->prefix_length = pref_len;
     left->depth = right->depth = b->depth + 1;
@@ -261,10 +260,13 @@ void merge_buckets(struct bucket *parent){
 // base64-encoded hmac key, and sequence number, delimited by spaces
 // peer ordering in the bucket file is according to availability/uptime of the
 // peer
-void parse_bucket(struct peers *peers, char *p, int l){
+//TODO: sign all bucket files
+void parse_bucket(struct peers *peers, char *p){
     int num_peers = 0;
+    int l = strlen(p);
     while(0 < l){
         struct address addr;
+        memset(&addr, 0, sizeof(struct address));
         if (num_peers == 20); // user error
         // extract public key
         char *tmp = strstr(p, "\n    ");
@@ -282,7 +284,6 @@ void parse_bucket(struct peers *peers, char *p, int l){
         for (; i < l && p[i] != ' '; i++);
         if (i == l || p[i] != ' '); // user error
         p[i] = '\0';
-        memset(&addr, 0, sizeof(struct address));
         if (*p == '['){
             tmp = memchr(p, ']', i);
             if (!tmp || *(tmp + 1) != ':'); // user error

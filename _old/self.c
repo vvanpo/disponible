@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -18,8 +19,9 @@ static struct self *self_init();
 static void self_destroy(struct self *);
 static void self_run_daemon(struct self *);
 static void load_config(struct self *);
-static void self_listen(struct self *);
+static void *listen_msg(void *);
 static void try_bind(int, int*);
+static void load_bootstrap(struct self *, char *);
 
 enum di_error di_daemon_load(struct di_daemon **d, struct di_options *opts){
     struct self *self = self_init();
@@ -63,13 +65,16 @@ void self_destroy(struct self *self){
 
 // self_run_daemon starts the main run loop and processing threads
 void self_run_daemon(struct self *self){
-    pthread_t recv_thread[UDP_RECV_THREADS];
+    pthread_t recv_thread[UDP_RECV_THREADS], message_listener;
     for (int i = 0; i < UDP_RECV_THREADS; i++){
         int err = pthread_create(recv_thread + i, NULL, message_recv_start,
                 self);
         if (err); // system error
     }
-    self_listen(self);
+    int err = pthread_create(message_listener, NULL, listen_msg, self);
+    if (err); // system error
+    //TODO: wait for socket to be initialized
+    //load_bootstrap(self, s);
     // wait for recv threads
     for (int i = 0; i < UDP_RECV_THREADS; i++){
         int err = pthread_join(recv_thread[i], NULL);
@@ -77,9 +82,10 @@ void self_run_daemon(struct self *self){
     }
 }
 
-// self_listen opens the configured socket and begins a listener thread to
+// listen_msg opens the configured socket and begins a listener thread to
 // service requests from peers
-void self_listen(struct self *self){
+void *listen_msg(void *arg){
+    struct self *self = (struct self *) arg;
     //TODO: open a separate UDP socket for exclusive use with bulk file
     //  tranfers (the result of a successful rq_find_file request)
     //  this is to ensure that bulk transfers don't crowd out incoming messages
@@ -135,6 +141,7 @@ void self_listen(struct self *self){
     free(buf);
     self->udp_msg_socket = 0;
     if (close(sockfd)); //error
+    return NULL;
 }
 
 // load_config sets self->config values to those in the config file, or the
@@ -142,7 +149,8 @@ void self_listen(struct self *self){
 void load_config(struct self *self){
     //buffer file = read_file("config");
     self->config.file_folder = "";
-    self->config.udp_port = 1024;
+    self->config.udp_port = 0;
+    self->config.bootstrap_file = "";
 }
 
 // try_bind tries to bind to the configured port, but if it is busy or not
@@ -170,4 +178,28 @@ static void try_bind(int sockfd, int *port){
         assert(false);
     }
     *port = ntohs(sa.sin6_port);
+}
+
+// load_bootstrap reads an initial bootstrap file and loads the peers therein into
+// the tree
+// the location of the bootstrap file is a configuration option, and can be a
+// URL
+// bootstrap file format is (base64 public key) (fqdn or ip):(port number)\n
+void load_bootstrap(struct self *self, char *p){
+    int const enc_key_len = util_base64_encoded_size(PUB_KEY_LENGTH);
+    char *end;
+    while (((end = strchr(p, '\n')) - p) > (enc_key_len + 4)){
+        byte pub_key[PUB_KEY_LENGTH];
+        byte fingerprint[DIGEST_LENGTH];
+        util_base64_decode(pub_key, p);
+        hash_digest(fingerprint, pub_key, PUB_KEY_LENGTH);
+        p += enc_key_len;
+        if (*p++ != ' '); // user error
+        struct address a;
+        memset(&a, 0, sizeof(a));
+        *end = '\0';
+        util_parse_address(&a, p);
+        p = end + 1;
+        protocol_key_exchange_req(self, fingerprint, &a);
+    }
 }

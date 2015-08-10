@@ -208,6 +208,7 @@ int             util_base64_encoded_size(int);
 int             util_base64_decoded_size(char *);
 void            util_get_address(struct address *, struct sockaddr *);
 struct sockaddr *util_get_sockaddr(struct sockaddr_storage *, struct address *);
+void            util_parse_address(struct address *, char *);
 void            util_hmac_key(byte *);
 void            util_hmac(byte *, byte *, int, byte *);
 RSA *           util_read_rsa_pem(char *);
