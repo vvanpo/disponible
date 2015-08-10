@@ -1,7 +1,7 @@
 #ifndef DSP_SERVER_H
 #define DSP_SERVER_H
 
-#include "dsp_error.h"
+#include "error.h"
 
 enum dsp_srv_config {
     DSP_SRV_DIR,
