@@ -7,6 +7,7 @@ enum dsp_error {
     DSP_ERR_INVALID_CONFIG,
     DSP_ERR_INVALID_FORMAT,
     DSP_ERR_CONNECT,
+    DSP_ERR_NO_KEY,
 };
 
 #endif

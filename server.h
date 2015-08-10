@@ -4,7 +4,6 @@
 #include "error.h"
 
 enum dsp_srv_config {
-    DSP_SRV_DIR,
     DSP_SRV_BOOTSTRAP_FILE,
     DSP_SRV_KEYS_FILE,
     DSP_SRV_AUTHORIZED_KEYS,
@@ -13,6 +12,7 @@ enum dsp_srv_config {
     DSP_SRV_PORT_SCTP,
     DSP_SRV_PORT_TCP,
     DSP_SRV_PORT_UDP,
+    DSP_SRV_FILE_DIR,
 };
 
 int dsp_srv_setup(char *path);
