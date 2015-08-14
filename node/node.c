@@ -6,7 +6,14 @@
 /// implementing header
 #include "node.h"
 
+static int setup(struct node *node);
 static int bootstrap(struct node *node);
+
+int node_start()
+{
+	// always call bootstrap for now
+	return 0;
+}
 
 /*
  * setup fills the passed directory with:
@@ -18,7 +25,7 @@ static int bootstrap(struct node *node);
  * 	ERR_PATH_NOT_EMPTY
  *	ERR_SYSTEM
  */
-int setup(struct node **node)
+int setup(struct node *node)
 {
 	/*
 	char *dirs[] = { "peers", "files", "files/queue", "keys" };
@@ -43,12 +50,6 @@ int setup(struct node **node)
 	}
 	*/
 	// crypt_create_keys()
-	return 0;
-}
-
-int start(struct node *node)
-{
-	// always call bootstrap for now
 	return 0;
 }
 

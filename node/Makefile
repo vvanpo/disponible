@@ -1,12 +1,12 @@
-CFLAGS=-std=c11 -Wall -Wno-parentheses
+CFLAGS=-std=c11 -Wall -Wno-parentheses -lgcrypt
 DEBUG=-g
 NODEBUG=-DNDEBUG
 
-DEPS=node.h conf.h peer.h cryp.h
+DEPS=node.h conf.h peer.h cryp.h prot.h
 OBJ=node.o conf.o peer.o cryp.o prot.o
 
 daemon: $(OBJ)
-	cc -o daemon $^ $(CFLAGS)
+	cc -o daemon main.c $^ $(CFLAGS)
 
 %.o: %.c $(DEPS)
 	cc -c -o $@ $< $(CFLAGS)

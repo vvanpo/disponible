@@ -1,6 +1,8 @@
 #ifndef NODE_H
 #define NODE_H
 
+#include "conf.h"
+
 enum error {
 	ERR_SUCCESS = 0,
 	ERR_SYSTEM,
@@ -16,5 +18,7 @@ struct node {
 	struct conf *conf;
 	struct bucket *root;
 };
+
+int node_start();
 
 #endif

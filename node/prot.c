@@ -1,4 +1,7 @@
 
+/// implementing header
+#include "prot.h"
+
 int prot_send_auth(unsigned char *finger, struct address addr)
 {
 	return 0;
@@ -23,3 +26,4 @@ int prot_recv_auth()
  * prot_recv_notify
  *
  * prot_recv_client
+ */

@@ -1,8 +1,14 @@
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 
 /// implementing header
 #include "peer.h"
+
+enum peer_error {
+	ERR_PEER_DUPLICATE,
+	ERR_PEER_MAX_DEPTH,
+};
 
 struct bucket {
 	// buckets are sorted in an ordered binary tree
@@ -25,9 +31,9 @@ struct bucket {
 
 static void find_leaf(struct bucket **b, unsigned char *finger);
 static void find_peer(struct peer **p, struct bucket *b, unsigned char *finger);
-static int count_leaf(struct bucket *b);
+static void count_leaf(int *cnt, struct bucket *b);
 static int split_bucket(struct bucket *leaf);
-static int merge_buckets(struct bucket *parent);
+static void merge_buckets(struct bucket *parent);
 
 // peer_get places the peer corresponding to the passed fingerprint in *peer,
 //   setting *peer to null if it isn't found.
@@ -57,8 +63,10 @@ int peer_add(unsigned char *finger, struct node *node)
 	struct peer *p;
 	find_peer(&p, b, finger);
 	if (p) return ERR_PEER_DUPLICATE;
-	while (node->conf.bucket_max == count_leaf(b)) {
-		if (node->conf.bucket_max_depth == b->depth)
+	int cnt;
+	count_leaf(&cnt, b);
+	while (node->conf->bucket_size == cnt) {
+		if (node->conf->bucket_depth_max == b->depth)
 			return ERR_PEER_MAX_DEPTH;
 		split_bucket(b);
 		find_leaf(&b, finger);
@@ -84,8 +92,8 @@ int peer_remove(struct peer *peer, struct node *node)
 //   passed fingerprint.
 void find_leaf(struct bucket **b, unsigned char *finger)
 {
-	while ((b->left && b->left->parent == b) ||
-			(b->right && b->right->parent == b)) {
+	while (((*b)->left && (*b)->left->parent == *b) ||
+			((*b)->right && (*b)->right->parent == *b)) {
 		int ret;
 		cryp_hash_cmp(&ret, finger, (*b)->left->prefix);
 		*b = ret < 0 ? (*b)->right : (*b)->left;
@@ -99,20 +107,18 @@ void find_peer(struct peer **p, struct bucket *b, unsigned char *finger)
 	find_leaf(&b, finger);
 	for (*p = b->head; *p; *p = (*p)->next) {
 		int ret;
-		cryp_hash_cmp(&ret, (*p)->finger, finger)
+		cryp_hash_cmp(&ret, (*p)->finger, finger);
 		if (!ret) return;
 	}
 	*p = NULL;
 }
 
 // count_leaf returns the number of peers in the leaf node
-int count_leaf(struct bucket *b)
+void count_leaf(int *cnt, struct bucket *leaf)
 {
-	struct peer *p = b->head;
-	int cnt = 0;
-	for (; p; p = p->next)
-		cnt++;
-	return cnt;
+	*cnt = 0;
+	for (struct peer *p = leaf->head; p; p = p->next) (*cnt)++;
+	return;
 }
 
 // split_bucket takes a leaf bucket and splits it.  Only to be called when
@@ -140,10 +146,12 @@ int split_bucket(struct bucket *leaf)
 	}
 	leaf->left = left;
 	leaf->right = right;
-	struct peer *p_last_left, *p_last_right, *p_next;
+	struct peer *p_last_left, *p_last_right;
 	p_last_left = p_last_right = NULL;
 	for (struct peer *p = leaf->head; p; p = p->next) {
-		if (cryp_hash_cmp(p->finger, left->prefix) < 0) {
+		int cmp;
+		cryp_hash_cmp(&cmp, p->finger, left->prefix);
+		if (cmp < 0) {
 			if (!p_last_right) right->head = p;
 			else p_last_right->next = p;
 			p->prev = p_last_right;
@@ -161,6 +169,8 @@ int split_bucket(struct bucket *leaf)
 	return 0;
 }
 
+// merge_buckets takes the parent of two leaves and merges their peer lists.
+//   TODO: keep LRU property of the list
 void merge_buckets(struct bucket *parent)
 {
 	if (parent->left->head)

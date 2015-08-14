@@ -29,7 +29,7 @@ void cryp_hash_dist(unsigned char *dist, unsigned char *h1, unsigned char *h2)
 
 int cryp_gen_keys(struct keys *keys)
 {
-	gcry_sexp_t *param;
+	gcry_sexp_t *param = NULL;
 	char *sexp = "(genkey (rsa (nbits 4:2048) (flags oaep pss)))";
 	assert(!gcry_sexp_new(param, sexp, strlen(sexp), 1));
 	gcry_error_t err = gcry_pk_genkey(keys->data, *param);
