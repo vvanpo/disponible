@@ -19,6 +19,6 @@ struct node {
 	struct bucket *root;
 };
 
-int node_start();
+int node_start(char *path);
 
 #endif

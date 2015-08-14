@@ -46,7 +46,7 @@ void peer_get(struct peer **peer, unsigned char *finger, struct node *node)
 }
 
 // peer_add creates a peer structure using the passed fingerprint and adds it to
-//   the tree, optionally passing a back a reference in *peer if peer is non-
+//   the list, optionally passing a back a reference in *peer if peer is non-
 //   null.
 //   On error, returns
 //   	ERR_SYSTEM
@@ -82,6 +82,7 @@ int peer_add(unsigned char *finger, struct node *node)
 	return 0;
 }
 
+// peer_remove removes a peer from the list
 int peer_remove(struct peer *peer, struct node *node)
 {
 	return 0;

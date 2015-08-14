@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 
 /// implementing header
@@ -9,9 +10,14 @@
 static int setup(struct node *node);
 static int bootstrap(struct node *node);
 
-int node_start()
+// node_start starts the daemon, using the passed directory for loading config
+//   and persistence if it is non-null.  If a null-pointer is passed then the
+//   resulting instance is in-memory only.
+int node_start(char *path)
 {
+	struct node *node = calloc(1, sizeof(*node));
 	// always call bootstrap for now
+	int err = bootstrap(node);
 	return 0;
 }
 
