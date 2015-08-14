@@ -11,7 +11,7 @@ struct keys {
 
 // gcry_create_nonce(buf, len);
 
-inline void cryp_hash(unsigned char *out, void *in, int len)
+inline void cryp_hash(unsigned char *out, void *in, size_t len)
 {
 	gcry_md_hash_buffer(GCRY_MD_SHA256, out, in, len);
 }

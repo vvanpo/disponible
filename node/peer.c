@@ -83,9 +83,17 @@ int peer_add(unsigned char *finger, struct node *node)
 }
 
 // peer_remove removes a peer from the list
-int peer_remove(struct peer *peer, struct node *node)
+void peer_remove(struct peer *peer, struct node *node)
 {
-	return 0;
+	if (peer->next) peer->next->prev = peer->prev;
+	if (peer->prev) peer->prev->next = peer->next;
+	else {
+		struct bucket *b = node->root;
+		find_leaf(&b, peer->finger);
+		b->head = peer->next;
+		if (!b->head && b->parent) merge_buckets(b->parent);
+	}
+	free(peer);
 }
 
 // find_leaf takes the given bucket at *b (usually set to node->root) and
@@ -157,8 +165,7 @@ int split_bucket(struct bucket *leaf)
 			else p_last_right->next = p;
 			p->prev = p_last_right;
 			p_last_right = p;
-		}
-		else {
+		} else {
 			if (!p_last_left) left->head = p;
 			else p_last_left->next = p;
 			p->prev = p_last_left;
