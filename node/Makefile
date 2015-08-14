@@ -1,4 +1,4 @@
-CFLAGS=-std=c11 -Wall -Wno-parentheses -lgcrypt
+CFLAGS=-std=c11 -Wall -Wno-parentheses -lcrypto
 DEBUG=-g
 NODEBUG=-DNDEBUG
 

@@ -17,6 +17,6 @@ struct peer {
 
 void peer_get(struct peer **peer, unsigned char *finger, struct node *node);
 int peer_add(unsigned char *finger, struct node *node);
-int peer_remove(struct peer *peer, struct node *node);
+void peer_remove(struct peer *peer, struct node *node);
 
 #endif

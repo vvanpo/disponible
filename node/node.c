@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include "cryp.h"
 
 /// implementing header
 #include "node.h"
@@ -16,8 +17,10 @@ static int bootstrap(struct node *node);
 int node_start(char *path)
 {
 	struct node *node = calloc(1, sizeof(*node));
+	if (!node) return ERR_SYSTEM;
+	int err = cryp_gen_key_pair(&node->key_pair);
 	// always call bootstrap for now
-	int err = bootstrap(node);
+	err = bootstrap(node);
 	return 0;
 }
 

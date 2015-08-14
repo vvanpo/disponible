@@ -16,6 +16,7 @@ enum error {
 
 struct node {
 	struct conf *conf;
+	void *key_pair;
 	struct bucket *root;
 };
 
