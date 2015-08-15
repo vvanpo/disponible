@@ -1,9 +1,10 @@
 #include <assert.h>
 #include <openssl/sha.h>
 #include <openssl/rsa.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "node.h"
+#include "error.h"
 
 /// implementing header
 #include "cryp.h"
@@ -89,8 +90,27 @@ int cryp_base64_decode(void *out, size_t *len, char *in)
 
 int cryp_gen_key_pair(void **key_pair)
 {
-	*key_pair = RSA_generate_key(2048, 65537, NULL, NULL);
+	*key_pair = RSA_generate_key(KEY_MOD_LEN * 8, 65537, NULL, NULL);
 	if (!*key_pair) return ERR_CRYP_LIBCRYPTO;
 	return 0;
 }
 
+// cryp_pub_key_encode writes an encoded form of 'key' to 'out', which must be
+//   of size PUB_KEY_LEN.
+void cryp_pub_key_encode(void *out, void *key)
+{
+	memset(out, 0, PUB_KEY_LEN);
+	RSA *rsa = key;
+	assert(rsa->e && rsa->n);
+	BN_bn2bin(rsa->e, out);
+	BN_bn2bin(rsa->n, out + 4);
+}
+
+// cryp_pub_key_decode decodes a public key into an internal representation
+void cryp_pub_key_decode(void **key, void *in)
+{
+	RSA *rsa = RSA_new();
+	rsa->e = BN_bin2bn(in, 4, NULL);
+	rsa->n = BN_bin2bn(in + 4, KEY_MOD_LEN, NULL);
+	*key = rsa;
+}

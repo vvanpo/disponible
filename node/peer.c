@@ -1,14 +1,11 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include "conf.h"
+#include "error.h"
 
 /// implementing header
 #include "peer.h"
-
-enum peer_error {
-	ERR_PEER_DUPLICATE,
-	ERR_PEER_MAX_DEPTH,
-};
 
 struct bucket {
 	// buckets are sorted in an ordered binary tree

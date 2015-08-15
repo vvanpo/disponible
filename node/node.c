@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include "cryp.h"
+#include "error.h"
 
 /// implementing header
 #include "node.h"
@@ -18,22 +19,21 @@ int node_start(char *path)
 {
 	struct node *node = calloc(1, sizeof(*node));
 	if (!node) return ERR_SYSTEM;
-	int err = cryp_gen_key_pair(&node->key_pair);
+	int err;
+	if (err = cryp_gen_key_pair(&node->key_pair)) return err;
 	// always call bootstrap for now
-	err = bootstrap(node);
+	if (err = bootstrap(node)) return err;
 	return 0;
 }
 
-/*
- * setup fills the passed directory with:
- * 	peers/
- * 	files/queue/
- * 	keys/
- *   returning error on failure:
- *	ERR_NO_PERMISSION
- * 	ERR_PATH_NOT_EMPTY
- *	ERR_SYSTEM
- */
+// setup fills the passed directory with:
+// 	peers/
+// 	files/queue/
+// 	keys/
+//   returning error on failure:
+//	ERR_NO_PERMISSION
+//	ERR_PATH_NOT_EMPTY
+//	ERR_SYSTEM
 int setup(struct node *node)
 {
 	/*
