@@ -16,6 +16,8 @@ enum error {
 
 	ERR_PEER_DUPLICATE,
 	ERR_PEER_MAX_DEPTH,
+
+	ERR_NET_ADDR_INVALID
 };
 
 

@@ -62,8 +62,8 @@ int peer_add(unsigned char *finger, struct node *node)
 	if (p) return ERR_PEER_DUPLICATE;
 	int cnt;
 	count_leaf(&cnt, b);
-	while (node->conf->bucket_size == cnt) {
-		if (node->conf->bucket_depth_max == b->depth)
+	while (node->conf.bucket_size == cnt) {
+		if (node->conf.bucket_depth_max == b->depth)
 			return ERR_PEER_MAX_DEPTH;
 		split_bucket(b);
 		find_leaf(&b, finger);

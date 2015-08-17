@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include "cryp.h"
 #include "error.h"
+#include "net.h"
 
 /// implementing header
 #include "node.h"
@@ -19,9 +20,17 @@ int node_start(char *path)
 {
 	struct node *node = calloc(1, sizeof(*node));
 	if (!node) return ERR_SYSTEM;
+	if (!path) {
+		conf_load_default(&node->conf);
+		node->conf.is_ephemeral = true;
+	} else {
+	//	conf_load_file
+	}
 	int err;
-	if (err = cryp_gen_key_pair(&node->key_pair)) return err;
+	if (err = cryp_gen_keypair(&node->key_pair)) return err;
+	//
 	// always call bootstrap for now
+	//
 	if (err = bootstrap(node)) return err;
 	return 0;
 }
@@ -64,6 +73,12 @@ int setup(struct node *node)
 
 int bootstrap(struct node *node)
 {
-	//prot_send_auth(finger, addr);
+	struct address addr = {};
+	int err = net_parse_addr(&addr, node->conf.bootstrap[0]);
+	if (err) return err;
+#include <stdio.h>
+	char *s;
+	net_encode_addr(&s, &addr);
+	printf("%s\n", s);
 	return 0;
 }

@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <ctype.h>
 #include <openssl/sha.h>
 #include <openssl/rsa.h>
 #include <stdint.h>
@@ -9,34 +10,36 @@
 /// implementing header
 #include "cryp.h"
 
-inline void cryp_hash(unsigned char *out, void *in, size_t len)
+inline void cryp_hash(unsigned char *out, void const *in, size_t len)
 {
 	SHA256(in, len, out);
 }
 
-inline void cryp_hash_cmp(int *ret, unsigned char *h1, unsigned char *h2)
+inline void cryp_hash_cmp(int *ret, unsigned char const *h1,
+	unsigned char const *h2)
 {
 	*ret = memcmp(h1, h2, HASH_LEN);
 }
 
-void cryp_hash_dist(unsigned char *dist, unsigned char *h1, unsigned char *h2)
+// cryp_hash_dist calculates the distance metric of 'in' and 'out' and stores in
+//   'out'.
+void cryp_hash_dist(unsigned char *out, unsigned char const *in)
 {
-	for (int i = 0; i < HASH_LEN; i++)
-		dist[i] = h1[i] ^ h2[i];
+	for (int i = 0; i < HASH_LEN; i++) out[i] ^= in[i];
 }
 
-// cryp_base64_encode takes binary input and writes the base64-encoded string
-//   to 'out'. Use the macro CRYP_B64_ENCODE_SIZE(x) to determine the needed
-//   size for 'out'.
-void cryp_base64_encode(char *out, void *in, size_t len)
+// cryp_b64_encode takes binary input and writes the base64-encoded string
+//   to 'out'. Use the macro CRYP_B64_ENCODE_LEN(x) to determine the needed
+//   length for 'out'.
+void cryp_b64_encode(char *out, void const *in, size_t len)
 {
 	int j = 0;
 	for (int i = 0; i < len; i += 3) {
-		uint32_t grp = ((unsigned char *) in)[i] << 16;
-		if (len - i > 1) grp += ((unsigned char *) in)[i + 1] << 8;
-		if (len - i > 2) grp += ((unsigned char *) in)[i + 2];
+		uint32_t grp = ((char *) in)[i] << 16;
+		if (len - i > 1) grp += ((char *) in)[i + 1] << 8;
+		if (len - i > 2) grp += ((char *) in)[i + 2];
 		for (int k = 0; k < 4; k++) {
-			int n = (grp & (0x3f << (18 - k * 6))) >> (18 - k * 6);
+			int n = (grp >> (18 - k * 6)) & 0x3f;
 			unsigned char c;
 			if (n <= 25) c = n + 'A';
 			else if (n <= 51) c = n - 26 + 'a';
@@ -52,12 +55,12 @@ void cryp_base64_encode(char *out, void *in, size_t len)
 	out[j] = '\0';
 }
 
-// cryp_base64_decode writes to 'out' the binary data decoded from 'in'. Use the
-//   macro CRYP_B64_DECODE_SIZE(x) to determine a safe size for 'out'. The
-//   number of bytes written is stored in *len.
+// cryp_b64_decode writes to 'out' the binary data decoded from 'in'. Use the
+//   macro CRYP_B64_DECODE_LEN(strlen(in)) to determine a safe length for 'out'.
+//   The number of bytes written is stored in *len if 'len' is non-null.
 //   On error, returns:
 //     ERR_CRYP_B64_INVALID
-int cryp_base64_decode(void *out, size_t *len, char *in)
+int cryp_b64_decode(void *out, size_t *len, char const *in)
 {
 	int l = strlen(in);
 	if (l % 4) return ERR_CRYP_B64_INVALID;
@@ -67,9 +70,9 @@ int cryp_base64_decode(void *out, size_t *len, char *in)
 		int n, c;
 		for (int k = 0; k < 4; k++) {
 			c = (int) in[i + k];
-			if ('A' <= c && c <= 'Z') n = c - 'A';
-			else if ('a' <= c && c <= 'z') n = c - 'a' + 26;
-			else if ('0' <= c && c <= '9') n = c - '0' + 52;
+			if (isupper(c)) n = c - 'A';
+			else if (islower(c)) n = c - 'a' + 26;
+			else if (isdigit(c)) n = c - '0' + 52;
 			else if (c == '+') n = 62;
 			else if (c == '/') n = 63;
 			else if (c == '=') break;
@@ -79,8 +82,7 @@ int cryp_base64_decode(void *out, size_t *len, char *in)
 		int lim = 3;
 		if (c == '=') lim = l == i + 1 ? 1 : 2;
 		for (int k = 0; k < lim; k++) {
-			((unsigned char *) out)[j] =
-				(unsigned char) (0xff & (grp >> (16 - k * 8)));
+			((char *) out)[j] = (0xff & (grp >> (16 - k * 8)));
 			j++;
 		}
 	}
@@ -88,26 +90,27 @@ int cryp_base64_decode(void *out, size_t *len, char *in)
 	return 0;
 }
 
-int cryp_gen_key_pair(void **key_pair)
+// cryp_gen_keypair generates a new private/public key pair.
+int cryp_gen_keypair(void **keypair)
 {
-	*key_pair = RSA_generate_key(KEY_MOD_LEN * 8, 65537, NULL, NULL);
-	if (!*key_pair) return ERR_CRYP_LIBCRYPTO;
+	*keypair = RSA_generate_key(KEY_MOD_LEN * 8, 65537, NULL, NULL);
+	if (!*keypair) return ERR_CRYP_LIBCRYPTO;
 	return 0;
 }
 
 // cryp_pub_key_encode writes an encoded form of 'key' to 'out', which must be
-//   of size PUB_KEY_LEN.
-void cryp_pub_key_encode(void *out, void *key)
+//   of length PUB_KEY_LEN.
+void cryp_pub_key_encode(void *out, void const *key)
 {
 	memset(out, 0, PUB_KEY_LEN);
-	RSA *rsa = key;
+	RSA const *rsa = key;
 	assert(rsa->e && rsa->n);
 	BN_bn2bin(rsa->e, out);
 	BN_bn2bin(rsa->n, out + 4);
 }
 
-// cryp_pub_key_decode decodes a public key into an internal representation
-void cryp_pub_key_decode(void **key, void *in)
+// cryp_pub_key_decode decodes a public key into an internal representation.
+void cryp_pub_key_decode(void **key, void const *in)
 {
 	RSA *rsa = RSA_new();
 	rsa->e = BN_bin2bn(in, 4, NULL);

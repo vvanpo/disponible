@@ -1,12 +1,9 @@
 #ifndef PEER_H
 #define PEER_H
 
-#include "node.h"
 #include "cryp.h"
-
-struct address {
-
-};
+#include "net.h"
+#include "node.h"
 
 struct peer {
 	unsigned char finger[HASH_LEN];

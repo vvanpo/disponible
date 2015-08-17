@@ -11,6 +11,8 @@ struct conf {
 	int bucket_size;
 	int bucket_depth_max;
 	uint16_t port_sctp, port_tcp, port_udp;
+	char **authorized;
+	char **peer_blacklist;
 };
 
 enum conf_opt {
@@ -24,9 +26,8 @@ enum conf_opt {
 	PORT_UDP,
 };
 
+void conf_load_default(struct conf *conf);
 int conf_load_file(struct conf *conf, int fd);
-int conf_get_option(char **value, enum conf_opt option, struct conf *conf);
-int conf_set_option(enum conf_opt option, char *value, struct conf *conf);
 int conf_get_authorized(char ***keys, struct conf *conf);
 int conf_add_authorized(char *key, struct conf *conf);
 int conf_rm_authorized(char *key, struct conf *conf);
