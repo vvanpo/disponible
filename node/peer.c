@@ -53,7 +53,7 @@ int peer_add(unsigned char *finger, struct node *node)
 {
 	struct bucket *b = node->root;
 	if (!b) {
-		b = node->root = calloc(1, sizeof(*b));
+		b = node->root = calloc(1, sizeof *b);
 		if (!b) return ERR_SYSTEM;
 	}
 	find_leaf(&b, finger);
@@ -68,7 +68,7 @@ int peer_add(unsigned char *finger, struct node *node)
 		split_bucket(b);
 		find_leaf(&b, finger);
 	}
-	p = calloc(1, sizeof(*p));
+	p = calloc(1, sizeof *p);
 	if (!p) return ERR_SYSTEM;
 	memcpy(p->finger, finger, HASH_LEN);
 	if (b->head) {
@@ -131,8 +131,8 @@ void count_leaf(int *cnt, struct bucket *leaf)
 //   bucket.depth < conf.max_depth
 int split_bucket(struct bucket *leaf)
 {
-	struct bucket *left = calloc(1, sizeof(*left));
-	struct bucket *right = calloc(1, sizeof(*right));
+	struct bucket *left = calloc(1, sizeof *left);
+	struct bucket *right = calloc(1, sizeof *right);
 	if (!left || !right) return ERR_SYSTEM;
 	left->prefix_len = right->prefix_len = leaf->prefix_len + 1;
 	left->depth = right->depth = leaf->depth + 1;

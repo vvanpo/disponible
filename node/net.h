@@ -9,7 +9,7 @@ struct address {
 	uint16_t sctp, tcp, udp;
 };
 
-int net_parse_addr(struct address *addr, char *s);
+int net_parse_addr(struct address *addr, char const *s);
 void net_encode_addr(char **out, struct address *addr);
 
 #endif

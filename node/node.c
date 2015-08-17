@@ -18,7 +18,7 @@ static int bootstrap(struct node *node);
 //   resulting instance is in-memory only.
 int node_start(char *path)
 {
-	struct node *node = calloc(1, sizeof(*node));
+	struct node *node = calloc(1, sizeof *node);
 	if (!node) return ERR_SYSTEM;
 	if (!path) {
 		conf_load_default(&node->conf);
@@ -32,6 +32,7 @@ int node_start(char *path)
 	// always call bootstrap for now
 	//
 	if (err = bootstrap(node)) return err;
+	free(node);
 	return 0;
 }
 
@@ -73,12 +74,15 @@ int setup(struct node *node)
 
 int bootstrap(struct node *node)
 {
-	struct address addr = {};
-	int err = net_parse_addr(&addr, node->conf.bootstrap[0]);
-	if (err) return err;
+	struct address addr;
+	int err;
+	for (int i = 0; node->conf.bootstrap[i]; i++) {
+		if (err = net_parse_addr(&addr, node->conf.bootstrap[0]))
+			return err;
 #include <stdio.h>
-	char *s;
-	net_encode_addr(&s, &addr);
-	printf("%s\n", s);
+char *s;
+net_encode_addr(&s, &addr);
+printf("%s\n", s);
+	}
 	return 0;
 }

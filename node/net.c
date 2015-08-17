@@ -13,12 +13,13 @@
 //   	ERR_NET_ADDR_INVALID
 //   	ERR_SYSTEM
 //   	ERR_CONN_FAILURE
-int net_parse_addr(struct address *addr, char *s)
+int net_parse_addr(struct address *addr, char const *s)
 {
 	char *tmp = malloc(strlen(s) + 1);
 	if (!tmp) return ERR_SYSTEM;
+	memset(addr, 0, sizeof *addr);
 	s = strcpy(tmp, s);
-	struct sockaddr_in6 *sa = addr->sa = calloc(1, sizeof(*sa));
+	struct sockaddr_in6 *sa = addr->sa = calloc(1, sizeof *sa);
 	if (!sa) return ERR_SYSTEM;
 	sa->sin6_family = AF_INET6;
 	if (*s == '[') {
@@ -31,13 +32,14 @@ int net_parse_addr(struct address *addr, char *s)
 	} else {
 		if (!(tmp = strchr(s, ':'))) goto parse_err;
 		*tmp = '\0';
-		if (inet_pton(AF_INET, s, &sa->sin6_addr + 12)) {
-			memset(&sa->sin6_addr + 8, 0xff, 4);
-		} else {
+		if (inet_pton(AF_INET, s, (char *) &sa->sin6_addr + 12))
+			memset((char *) &sa->sin6_addr + 8, 0xff, 4);
+		else {
 			addr->fqdn = malloc(strlen(s) + 1);
 			if (!addr->fqdn) return ERR_SYSTEM;
 			strcpy(addr->fqdn, s);
 			free(sa);
+			sa = NULL;
 		}
 		tmp++;
 	}
@@ -55,10 +57,9 @@ int net_parse_addr(struct address *addr, char *s)
 	addr->udp = port;
 	return 0;
 parse_err:
-	free(addr->fqdn);
-	free(s);
-	free(sa);
-	memset(addr, 0, sizeof(*addr));
+	if (addr->fqdn) free(addr->fqdn);
+	free((char *) s);
+	if (sa) free(sa);
 	return ERR_NET_ADDR_INVALID;
 }
 
