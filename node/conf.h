@@ -3,16 +3,16 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "peer.h"
 
 struct conf {
 	bool is_ephemeral;
-	char **bootstrap;
-	void *keys;
+	struct peer **bootstrap;
 	int bucket_size;
 	int bucket_depth_max;
 	uint16_t port_sctp, port_tcp, port_udp;
 	char **authorized;
-	char **peer_blacklist;
+	struct peer *blacklist;
 };
 
 enum conf_opt {

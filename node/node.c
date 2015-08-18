@@ -77,6 +77,7 @@ int bootstrap(struct node *node)
 	struct address addr;
 	int err;
 	for (int i = 0; node->conf.bootstrap[i]; i++) {
+
 		if (err = net_parse_addr(&addr, node->conf.bootstrap[0]))
 			return err;
 	}
