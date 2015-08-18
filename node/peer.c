@@ -17,7 +17,7 @@ struct bucket {
 	// bits past prefix_length are 0
 	unsigned char prefix[HASH_LEN];
 	// head of the peer list, non-NULL only for leaf buckets
-	struct peer *head;
+	struct known *head;
 	struct bucket *parent;
 	// a leaf bucket still make use of child pointers, by using them as a
 	// shortcut to the nearest leaf buckets, i.e. all leaf buckets are
@@ -26,9 +26,16 @@ struct bucket {
 	struct bucket *right;
 };
 
-static void find_leaf(struct bucket **b, unsigned char *finger);
-static void find_peer(struct peer **p, struct bucket *b, unsigned char *finger);
-static void count_leaf(int *cnt, struct bucket *b);
+struct known {
+	struct peer id;
+	struct known *next;
+	struct known *prev;
+};
+
+static void find_leaf(struct bucket **b, unsigned char const *finger);
+static void find_known(struct known **k, struct bucket *b,
+		unsigned char const *finger);
+static void count_leaf(int *cnt, struct bucket const *b);
 static int split_bucket(struct bucket *leaf);
 static void merge_buckets(struct bucket *parent);
 
@@ -39,12 +46,14 @@ void peer_get(struct peer **peer, unsigned char *finger, struct node *node)
 	*peer = NULL;
 	struct bucket *b = node->root;
 	if (!b) return;
-	find_peer(peer, b, finger);
+	struct known *k;
+	find_known(&k, b, finger);
+	*peer = &k->id;
 }
 
-// peer_add creates a peer structure using the passed fingerprint and adds it to
-//   the list, optionally passing a back a reference in *peer if peer is non-
-//   null.
+// peer_add creates a known structure using the passed fingerprint and adds it
+//   to the list of known peers, optionally passing a back a reference in *peer
+//   if peer is non-null.
 //   On error, returns
 //   	ERR_SYSTEM
 //   	ERR_PEER_DUPLICATE
@@ -57,9 +66,9 @@ int peer_add(unsigned char *finger, struct node *node)
 		if (!b) return ERR_SYSTEM;
 	}
 	find_leaf(&b, finger);
-	struct peer *p;
-	find_peer(&p, b, finger);
-	if (p) return ERR_PEER_DUPLICATE;
+	struct known *k;
+	find_known(&k, b, finger);
+	if (k) return ERR_PEER_DUPLICATE;
 	int cnt;
 	count_leaf(&cnt, b);
 	while (node->conf.bucket_size == cnt) {
@@ -68,35 +77,37 @@ int peer_add(unsigned char *finger, struct node *node)
 		split_bucket(b);
 		find_leaf(&b, finger);
 	}
-	p = calloc(1, sizeof *p);
-	if (!p) return ERR_SYSTEM;
-	memcpy(p->finger, finger, HASH_LEN);
+	k = calloc(1, sizeof *k);
+	if (!k) return ERR_SYSTEM;
+	memcpy(k->id.finger, finger, HASH_LEN);
 	if (b->head) {
-		p->next = b->head;
-		b->head->prev = p;
+		k->next = b->head;
+		b->head->prev = k;
 	}
-	b->head = p;
+	b->head = k;
 	return 0;
 }
 
-// peer_remove removes a peer from the list
+// peer_remove removes a peer from the list of known peers
 void peer_remove(struct peer *peer, struct node *node)
 {
-	if (peer->next) peer->next->prev = peer->prev;
-	if (peer->prev) peer->prev->next = peer->next;
+	struct known *k;
+	find_known(&k, node->root, peer->finger);
+	if (k->next) k->next->prev = k->prev;
+	if (k->prev) k->prev->next = k->next;
 	else {
 		struct bucket *b = node->root;
-		find_leaf(&b, peer->finger);
-		b->head = peer->next;
+		find_leaf(&b, k->id.finger);
+		b->head = k->next;
 		if (!b->head && b->parent) merge_buckets(b->parent);
 	}
-	free(peer);
+	free(k);
 }
 
 // find_leaf takes the given bucket at *b (usually set to node->root) and
 //   traverses down the tree until it finds the leaf bucket corresponding to the
 //   passed fingerprint.
-void find_leaf(struct bucket **b, unsigned char *finger)
+void find_leaf(struct bucket **b, unsigned char const *finger)
 {
 	while (((*b)->left && (*b)->left->parent == *b) ||
 			((*b)->right && (*b)->right->parent == *b)) {
@@ -106,24 +117,24 @@ void find_leaf(struct bucket **b, unsigned char *finger)
 	}
 }
 
-// find_peer searchs a given bucket for the passed fingerprint, setting *p to
+// find_known searchs a given bucket for the passed fingerprint, setting *k to
 //   null if it is not found.
-void find_peer(struct peer **p, struct bucket *b, unsigned char *finger)
+void find_known(struct known **k, struct bucket *b, unsigned char const *finger)
 {
 	find_leaf(&b, finger);
-	for (*p = b->head; *p; *p = (*p)->next) {
+	for (*k = b->head; *k; *k = (*k)->next) {
 		int ret;
-		cryp_hash_cmp(&ret, (*p)->finger, finger);
+		cryp_hash_cmp(&ret, (*k)->id.finger, finger);
 		if (!ret) return;
 	}
-	*p = NULL;
+	*k = NULL;
 }
 
 // count_leaf returns the number of peers in the leaf node
-void count_leaf(int *cnt, struct bucket *leaf)
+void count_leaf(int *cnt, struct bucket const *leaf)
 {
 	*cnt = 0;
-	for (struct peer *p = leaf->head; p; p = p->next) (*cnt)++;
+	for (struct known *k = leaf->head; k; k = k->next) (*cnt)++;
 	return;
 }
 
@@ -152,24 +163,24 @@ int split_bucket(struct bucket *leaf)
 	}
 	leaf->left = left;
 	leaf->right = right;
-	struct peer *p_last_left, *p_last_right;
-	p_last_left = p_last_right = NULL;
-	for (struct peer *p = leaf->head; p; p = p->next) {
+	struct known *k_last_left, *k_last_right;
+	k_last_left = k_last_right = NULL;
+	for (struct known *k = leaf->head; k; k = k->next) {
 		int cmp;
-		cryp_hash_cmp(&cmp, p->finger, left->prefix);
+		cryp_hash_cmp(&cmp, k->id.finger, left->prefix);
 		if (cmp < 0) {
-			if (!p_last_right) right->head = p;
-			else p_last_right->next = p;
-			p->prev = p_last_right;
-			p_last_right = p;
+			if (!k_last_right) right->head = k;
+			else k_last_right->next = k;
+			k->prev = k_last_right;
+			k_last_right = k;
 		} else {
-			if (!p_last_left) left->head = p;
-			else p_last_left->next = p;
-			p->prev = p_last_left;
-			p_last_left = p;
+			if (!k_last_left) left->head = k;
+			else k_last_left->next = k;
+			k->prev = k_last_left;
+			k_last_left = k;
 		}
 	}
-	p_last_left->next = p_last_right->next = NULL;
+	k_last_left->next = k_last_right->next = NULL;
 	leaf->head = NULL;
 	return 0;
 }
@@ -182,7 +193,7 @@ void merge_buckets(struct bucket *parent)
 		parent->head = parent->left->head;
 	if (parent->right->head) {
 		if (parent->head) {
-			struct peer *last = parent->head;
+			struct known *last = parent->head;
 			for (; last->next; last = last->next);
 			last->next = parent->right->head;
 			parent->right->head->prev = last;

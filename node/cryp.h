@@ -6,6 +6,7 @@
 #define HASH_LEN 32
 #define KEY_MOD_LEN 256
 #define PUB_KEY_LEN (KEY_MOD_LEN + 4)
+#define BLOCK_KEY_LEN 16
 
 #define CRYP_B64_ENCODED_SIZE(l) (4 * (((l) + 2) / 3) + 1)
 #define CRYP_B64_DECODED_SIZE(l) (3 * ((l) / 4))

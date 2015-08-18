@@ -79,10 +79,6 @@ int bootstrap(struct node *node)
 	for (int i = 0; node->conf.bootstrap[i]; i++) {
 		if (err = net_parse_addr(&addr, node->conf.bootstrap[0]))
 			return err;
-#include <stdio.h>
-char *s;
-net_encode_addr(&s, &addr);
-printf("%s\n", s);
 	}
 	return 0;
 }

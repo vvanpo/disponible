@@ -5,12 +5,13 @@
 
 struct conf default_conf = {
 	false,
-	(char *[]) { "192.168.1.1:1024:0:1024", NULL },
+	(char *[]) { "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHa= "
+		"[::1]:1024:0:1024", NULL },
 	NULL,
 	20,
 	4,
 	1024,
-	1024,
+	0,
 	1024,
 	(char *[]) {},
 	(char *[]) {},

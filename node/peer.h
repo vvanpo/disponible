@@ -8,8 +8,7 @@
 struct peer {
 	unsigned char finger[HASH_LEN];
 	struct address addr;
-	struct peer *next;
-	struct peer *prev;
+	struct session session;
 };
 
 void peer_get(struct peer **peer, unsigned char *finger, struct node *node);
