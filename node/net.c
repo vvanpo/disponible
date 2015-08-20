@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <netdb.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -77,4 +78,9 @@ void net_encode_addr(char **out, struct address *addr)
 	} else assert(false);
 	sprintf(*out + strlen(*out), ":%d:%d:%d", addr->sctp, addr->tcp,
 		addr->udp);
+}
+
+int net_connect(struct peer *peer)
+{
+	return 0;
 }

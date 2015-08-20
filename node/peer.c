@@ -3,6 +3,7 @@
 #include <string.h>
 #include "conf.h"
 #include "error.h"
+#include "node.h"
 
 /// implementing header
 #include "peer.h"

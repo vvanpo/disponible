@@ -3,13 +3,13 @@
 
 #include "cryp.h"
 #include "net.h"
-#include "node.h"
 
 struct peer {
 	unsigned char finger[HASH_LEN];
 	struct address addr;
 	struct session session;
 };
+struct node;
 
 void peer_get(struct peer **peer, unsigned char *finger, struct node *node);
 int peer_add(unsigned char *finger, struct node *node);

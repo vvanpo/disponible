@@ -6,12 +6,14 @@
 #include "cryp.h"
 #include "error.h"
 #include "net.h"
+#include "prot.h"
 
 /// implementing header
 #include "node.h"
 
-static int setup(struct node *node);
+static int init_instance(struct node *node);
 static int bootstrap(struct node *node);
+static int listen(struct node *node);
 
 // node_start starts the daemon, using the passed directory for loading config
 //   and persistence if it is non-null.  If a null-pointer is passed then the
@@ -25,6 +27,7 @@ int node_start(char *path)
 		node->conf.is_ephemeral = true;
 	} else {
 	//	conf_load_file
+	//	init_instance
 	}
 	int err;
 	if (err = cryp_gen_keypair(&node->key_pair)) return err;
@@ -32,19 +35,21 @@ int node_start(char *path)
 	// always call bootstrap for now
 	//
 	if (err = bootstrap(node)) return err;
+	if (err = listen(node)) return err;
 	free(node);
 	return 0;
 }
 
-// setup fills the passed directory with:
+// init_instance initializes the persistent instance storage by creating the
+//   directories
 // 	peers/
 // 	files/queue/
 // 	keys/
-//   returning error on failure:
+//   On error, returns:
 //	ERR_NO_PERMISSION
 //	ERR_PATH_NOT_EMPTY
 //	ERR_SYSTEM
-int setup(struct node *node)
+int init_instance(struct node *node)
 {
 	/*
 	char *dirs[] = { "peers", "files", "files/queue", "keys" };
@@ -74,12 +79,16 @@ int setup(struct node *node)
 
 int bootstrap(struct node *node)
 {
-	struct address addr;
-	int err;
-	for (int i = 0; node->conf.bootstrap[i]; i++) {
-
-		if (err = net_parse_addr(&addr, node->conf.bootstrap[0]))
-			return err;
+	struct peer *p;
+	for (int i = 0; (p = node->conf.bootstrap[i]); i++) {
+		int err = net_connect(p);
+		//TODO: if net error... continue;
+		err = prot_send(NULL, p, node);
 	}
+	return 0;
+}
+
+int listen(struct node *node)
+{
 	return 0;
 }
