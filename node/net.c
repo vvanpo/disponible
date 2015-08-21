@@ -1,14 +1,17 @@
 #include <arpa/inet.h>
 #include <assert.h>
+#include <errno.h>
 #include <netdb.h>
 #include <netinet/sctp.h>
-#include <socket.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
 #include "error.h"
 #include "peer.h"
+#include "prot.h"
 
 // net_parse_addr takes a string of the form (fqdn|ipv4|ipv6):sctp:tcp:udp and
 //   transforms it into an address structure.
@@ -88,10 +91,33 @@ int net_connect(struct peer *peer)
 	assert(!peer->session);
 	struct session *s = calloc(1, sizeof *s);
 	if (!s) return ERR_SYSTEM;
-	s->sockfd = socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+	int err = 0;
+	s->sockfd = socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
+	if (s->sockfd == -1) {
+		switch (errno) {
+		default: err = ERR_NET_CONN;
+		}
+		goto setup_err;
+	}
+	if (connect(s->sockfd, (struct sockaddr *) peer->addr.sa,
+		sizeof *peer->addr.sa) == -1) {
+		switch (errno) {
+		default: err = ERR_NET_CONN;
+		}
+		goto conn_err;
+	}
 	peer->session = s;
+	if (err = prot_send_handshake(peer))
+		goto prot_err;
 	return 0;
-err:
+prot_err:
+	peer->session = NULL;
+conn_err:
+	if (close(s->sockfd)) {
+		assert(errno != EBADF);
+		//TODO: shutdown and close vs close
+	}
+setup_err:
 	free(s);
 	return err;
 }

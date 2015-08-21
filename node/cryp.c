@@ -104,7 +104,6 @@ void cryp_pub_key_encode(unsigned char *out, void const *key)
 {
 	memset(out, 0, ASYM_KEY_LEN);
 	RSA const *rsa = key;
-	assert(rsa->e == 65537);
 	BN_bn2bin(rsa->n, out);
 }
 
