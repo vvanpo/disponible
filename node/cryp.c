@@ -93,27 +93,25 @@ int cryp_b64_decode(void *out, size_t *len, char const *in)
 // cryp_gen_keypair generates a new private/public key pair.
 int cryp_gen_keypair(void **keypair)
 {
-	*keypair = RSA_generate_key(KEY_MOD_LEN * 8, 65537, NULL, NULL);
+	*keypair = RSA_generate_key(ASYM_KEY_LEN * 8, 65537, NULL, NULL);
 	if (!*keypair) return ERR_CRYP_LIBCRYPTO;
 	return 0;
 }
 
 // cryp_pub_key_encode writes an encoded form of 'key' to 'out', which must be
-//   of length PUB_KEY_LEN.
-void cryp_pub_key_encode(void *out, void const *key)
+//   of length ASYM_KEY_LEN.
+void cryp_pub_key_encode(unsigned char *out, void const *key)
 {
-	memset(out, 0, PUB_KEY_LEN);
+	memset(out, 0, ASYM_KEY_LEN);
 	RSA const *rsa = key;
-	assert(rsa->e && rsa->n);
-	BN_bn2bin(rsa->e, out);
-	BN_bn2bin(rsa->n, out + 4);
+	assert(rsa->e == 65537);
+	BN_bn2bin(rsa->n, out);
 }
 
 // cryp_pub_key_decode decodes a public key into an internal representation.
-void cryp_pub_key_decode(void **key, void const *in)
+void cryp_pub_key_decode(void **key, unsigned char const *in)
 {
 	RSA *rsa = RSA_new();
-	rsa->e = BN_bin2bn(in, 4, NULL);
-	rsa->n = BN_bin2bn(in + 4, KEY_MOD_LEN, NULL);
+	rsa->n = BN_bin2bn(in, ASYM_KEY_LEN, NULL);
 	*key = rsa;
 }

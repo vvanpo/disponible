@@ -8,6 +8,7 @@
 struct conf {
 	bool is_ephemeral;
 	struct peer **bootstrap;
+	int peer_add_queue_len;
 	int bucket_size;
 	int bucket_depth_max;
 	uint16_t port_sctp, port_tcp, port_udp;

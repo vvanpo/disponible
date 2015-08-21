@@ -1,6 +1,8 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <netdb.h>
+#include <netinet/sctp.h>
+#include <socket.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -80,7 +82,21 @@ void net_encode_addr(char **out, struct address *addr)
 		addr->udp);
 }
 
+// net_connect 
 int net_connect(struct peer *peer)
+{
+	assert(!peer->session);
+	struct session *s = calloc(1, sizeof *s);
+	if (!s) return ERR_SYSTEM;
+	s->sockfd = socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+	peer->session = s;
+	return 0;
+err:
+	free(s);
+	return err;
+}
+
+int net_disconnect(struct peer *peer)
 {
 	return 0;
 }

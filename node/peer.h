@@ -7,7 +7,8 @@
 struct peer {
 	unsigned char finger[HASH_LEN];
 	struct address addr;
-	struct session session;
+	void *public_key;
+	struct session *session;
 };
 struct node;
 

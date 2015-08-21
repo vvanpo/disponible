@@ -10,6 +10,7 @@ inline void conf_load_default(struct conf *conf)
 {
 	struct conf default_conf = {
 		.is_ephemeral = false,
+		.peer_add_queue_len = 10,
 		.bucket_size = 20,
 		.bucket_depth_max = 4,
 		.port_sctp = 1024,
