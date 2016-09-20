@@ -8,12 +8,13 @@ debug: all
 nodebug: CPPFLAGS+=-DNDEBUG
 nodebug: all
 
-all: client server_api
+all: dsp server_api
 
-client: $(NAME)
-	cd client; \
-	$(CC) -c $(CFLAGS) $(CPPFLAGS) *.c; \
-	$(CC) -o $(NAME) *.o -ldsp && mv $(NAME) ../
+dsp: 
+	cd client && \
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) *.c && \
+	$(CC) -o $(NAME) *.o -ldsp && \
+	mv $(NAME) ../
 
 server_api: server_api/libdsp.so
 	cd server_api; \

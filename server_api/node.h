@@ -1,15 +1,12 @@
-#ifndef NODE_H
-#define NODE_H
+#ifndef NODES_H
+#define NODES_H
 
-#include "conf.h"
+#include <crypto.h>
 
 struct node {
-	struct conf conf;
-	void *key_pair;
-	struct bucket *root;
-	struct peer **add_queue;
+    unsigned char finger[HASH_LEN];
+    struct address addr;
+    void *public_key;
 };
-
-int node_start(char *path);
 
 #endif
