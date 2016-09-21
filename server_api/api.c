@@ -7,7 +7,7 @@ struct dsp_node dsp_find_node (unsigned char *finger, struct dsp_self *self)
     return node;
 }
 
-unsigned char *dsp_list_known_nodes (int *len, struct dsp_self self)
+unsigned char *dsp_list_known_nodes (int *len, struct dsp_self *self)
 {
-    return null;
+    return NULL;
 }

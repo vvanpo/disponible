@@ -1,12 +1,10 @@
-#ifndef NODES_H
-#define NODES_H
+#ifndef NODE_H
+#define NODE_H
 
-#include <crypto.h>
+struct list;
+struct node;
 
-struct node {
-    unsigned char finger[HASH_LEN];
-    struct address addr;
-    void *public_key;
-};
+struct list *new_list (int bucket_len);
+struct node *find_node (unsigned char *finger, struct list *);
 
 #endif

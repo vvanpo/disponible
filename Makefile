@@ -22,4 +22,4 @@ server_api: server_api/libdsp.so
 	$(CC) -shared -fpic -o libdsp.so *.o
 
 clean:
-	rm -f $(NAME)
+	rm -f $(NAME) client/*.o server_api/*.o server_api/libdsp.so
