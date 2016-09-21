@@ -24,10 +24,6 @@ struct list *new_list (int bucket_len)
 
 struct node *find_node (unsigned char *finger, struct list *list)
 {
-    
+
 }
 
-int add_node (unsigned char *finger, struct list *list)
-{
-    return 0;
-}

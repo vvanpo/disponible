@@ -24,14 +24,14 @@ struct dsp_self *dsp_init ();
  */
 struct dsp_node dsp_find_node (unsigned char *finger, struct dsp_self *);
 
-/* dsp_list_known_nodes traverses the node list and returns a list of
+/* dsp_list_valid_nodes traverses the node list and returns a list of
  *      fingerprints
  *  accepts
  *      pointer to existing int
  *      pointer to dsp_self object
  *  returns
- *      newly allocated contiguous block of length *len * DSP_HASH_LEN, initialized
- *          with the ordered list of fingerprints
+ *      newly allocated contiguous block of length *len * DSP_HASH_LEN,
+ *          initialized with the ordered list of fingerprints
  *      updates *len to number of fingerprints
  */
 unsigned char *dsp_list_known_nodes (int *len, struct dsp_self *);
