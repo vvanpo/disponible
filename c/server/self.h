@@ -13,7 +13,7 @@ struct self {
     struct {
 
     } config;
-    struct node *stored_nodes[HASH_LEN];
+    struct node *stored_nodes[HASH_LEN * 8 - 1];
     struct file *stored_files;
 };
 

@@ -18,7 +18,7 @@ struct dsp_file {
     unsigned int *blocks;
 };
 
-/* dsp_connect binds a dsp_self object to a remote or local host.
+/* dsp_connect binds a dsp_self object to a host.
  *  returns
  *      pointer to dsp_self object
  */

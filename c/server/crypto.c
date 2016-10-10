@@ -1,6 +1,6 @@
 #include <openssl/sha.h>
 
-#include "crypto.h"
+#include "self.h"
 
 void hash (unsigned char *out, void const *in, size_t len)
 {
