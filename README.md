@@ -18,26 +18,38 @@ config
 
 ## Client
 
-*NAME*
+**NAME**
+
     dsp
 
-*SYNOPSIS*
-    *dsp* [option [...]]
+**SYNOPSIS**
 
-*OPTIONS*
-    *-h, --help*
+    **dsp** [option [...]]
+
+**OPTIONS**
+
+    **-h, --help**
+
         Display help and exit.
-    *-s, --server* [<directory> | <fingerprint>] [option [...]]
+
+    **-s, --server** [<directory> | <fingerprint>] [option [...]]
+
         Binds the client to the server with fingerprint <fingerprint>, or living
         at <directory>.  If <directory> is specified but no server instance is
         running, the server is initialized.  Server options:
-        *ephemeral*
+
+        **ephemeral**
+
             Initializes an ephemeral (in-memory) server hosting files at
             <directory>.  Must be used with *bootstrap=*, and no existing
             server can be specified.
-        *bootstrap=*<fingerprint>
+
+        **bootstrap=**<fingerprint>
+
             Bootstrap node to populate empty stored nodes list.
-        *node-bucket-size=*<exponent>
+
+        **node-bucket-size=**<exponent>
+
             Sets the number of allowable stored nodes by specifying bucket size
             as 2^<exponent>.  The number of buckets is equal to the number of
             bits in a fingerprint.  Must be a value between 0 and 255.
