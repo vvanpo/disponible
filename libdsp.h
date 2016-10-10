@@ -5,37 +5,52 @@
 
 struct dsp_self;
 struct dsp_node {
-    unsigned char[DSP_HASH_LEN] finger;
+    unsigned char fingerprint[DSP_HASH_LEN];
+};
+struct dsp_file {
+    unsigned char *name;
+    unsigned char hash[DSP_HASH_LEN];
+    // File size in bytes
+    unsigned int size;
+    // Block size (in bytes) is 2^block_len_exp
+    unsigned char block_sz_exp;
+    // Array of stored block numbers, null if the whole file is stored
+    unsigned int *blocks;
 };
 
-/* dsp_init binds a dsp_self object to the local host environment.
+/* dsp_connect binds a dsp_self object to a remote or local host.
  *  returns
- *      pointer to new dsp_self object
- */
-struct dsp_self *dsp_init ();
-
-/* dsp_find_node finds the node with the given fingerprint.  If the node is not
- *      in the list of known nodes, the network is queried to find the node.
- *  accepts
- *      fingerprint of length DSP_HASH_LEN
  *      pointer to dsp_self object
- *  returns
- *      new dsp_node object, zero-filled if node not found
  */
-struct dsp_node dsp_find_node (unsigned char *finger, struct dsp_self *);
+struct dsp_self *dsp_connect ();
 
-/* dsp_list_valid_nodes traverses the node list and returns a list of
+/* dsp_list_stored_nodes traverses the node list and returns a list of
  *      fingerprints
  *  accepts
  *      pointer to existing int
- *      pointer to dsp_self object
  *  returns
- *      newly allocated contiguous block of length *len * DSP_HASH_LEN,
+ *      newly allocated contiguous block of length (*num * DSP_HASH_LEN),
  *          initialized with the ordered list of fingerprints
- *      updates *len to number of fingerprints
+ *      updates *num to number of returned nodes
  */
-unsigned char *dsp_list_known_nodes (int *len, struct dsp_self *);
+unsigned char *dsp_list_stored_nodes (int *num, struct dsp_self *);
 
-void dsp_fork_listener (struct dsp_self *);
+/* dsp_list_stored_files returns a list of stored files
+ *  accepts
+ *      pointer to existing int
+ *  returns
+ *      newly allocated array of file structs
+ *      updates *num to number of files
+ */
+struct file *dsp_list_stored_files (int *num, struct dsp_self *);
+
+/* dsp_return_node returns the node with the given fingerprint.  If the node is
+ *      not stored, the network is queried to find the node.
+ *  accepts
+ *      fingerprint of length DSP_HASH_LEN
+ *  returns
+ *      new dsp_node object, zero-filled if node not found
+ */
+struct dsp_node dsp_return_node (unsigned char *fingerprint, struct dsp_self *);
 
 #endif

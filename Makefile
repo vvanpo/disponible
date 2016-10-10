@@ -2,24 +2,32 @@ NAME=dsp
 
 CFLAGS=-std=c11 -Wall -Wno-parentheses
 
+CLIENT_OBJ=
+CLIENT_OBJ:=$(addprefix client/, $(CLIENT_OBJ))
+SERVER_OBJ=
+SERVER_OBJ:=$(addprefix server/, $(SERVER_OBJ))
+
 debug: CFLAGS+=-g
 debug: all
 
 nodebug: CPPFLAGS+=-DNDEBUG
 nodebug: all
 
-all: dsp server_api
+all: $(NAME) 
 
-dsp: 
+$(CLIENT_OBJ): lib$(NAME).h server.h client/*.c
 	cd client && \
-	$(CC) -c $(CFLAGS) $(CPPFLAGS) *.c && \
-	$(CC) -o $(NAME) *.o -ldsp && \
-	mv $(NAME) ../
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) *.c
 
-server_api: server_api/libdsp.so
-	cd server_api; \
-	$(CC) -c $(CFLAGS) $(CPPFLAGS) -fpic *.c; \
-	$(CC) -shared -fpic -o libdsp.so *.o
+$(SERVER_OBJ): lib$(NAME).h server.h server/*.c
+	cd server && \
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) *.c
+
+$(NAME): lib$(NAME).so $(CLIENT_OBJ) $(SERVER_OBJ)
+	$(CC) -o $(NAME) lib$(NAME).so $(CLIENT_OBJ) $(SERVER_OBJ)
+
+lib$(NAME).so: lib$(NAME).h api.c
+	$(CC) -shared -fpic -o lib$(NAME).so api.c
 
 clean:
-	rm -f $(NAME) client/*.o server_api/*.o server_api/libdsp.so
+	rm -f $(NAME) lib$(NAME).so $(CLIENT_OBJ) $(SERVER_OBJ)
