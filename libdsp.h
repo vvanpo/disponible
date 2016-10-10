@@ -1,15 +1,15 @@
 #ifndef _LIBDSP_H
 #define _LIBDSP_H
 
-#define DSP_HASH_LEN 32
+#define DSP_HASH_LENGTH 32
 
 struct dsp_self;
 struct dsp_node {
-    unsigned char fingerprint[DSP_HASH_LEN];
+    unsigned char fingerprint[DSP_HASH_LENGTH];
 };
 struct dsp_file {
+    unsigned char hash[DSP_HASH_LENGTH];
     unsigned char *name;
-    unsigned char hash[DSP_HASH_LEN];
     // File size in bytes
     unsigned int size;
     // Block size (in bytes) is 2^block_len_exp
@@ -29,7 +29,7 @@ struct dsp_self *dsp_connect ();
  *  accepts
  *      pointer to existing int
  *  returns
- *      newly allocated contiguous block of length (*num * DSP_HASH_LEN),
+ *      newly allocated contiguous block of length (*num * DSP_HASH_LENGTH),
  *          initialized with the ordered list of fingerprints
  *      updates *num to number of returned nodes
  */
@@ -47,7 +47,7 @@ struct file *dsp_list_stored_files (int *num, struct dsp_self *);
 /* dsp_return_node returns the node with the given fingerprint.  If the node is
  *      not stored, the network is queried to find the node.
  *  accepts
- *      fingerprint of length DSP_HASH_LEN
+ *      fingerprint of length DSP_HASH_LENGTH
  *  returns
  *      new dsp_node object, zero-filled if node not found
  */

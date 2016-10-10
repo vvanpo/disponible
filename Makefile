@@ -4,7 +4,7 @@ CFLAGS=-std=c11 -Wall -Wno-parentheses
 
 CLIENT_OBJ=
 CLIENT_OBJ:=$(addprefix client/, $(CLIENT_OBJ))
-SERVER_OBJ=
+SERVER_OBJ=self.o node.o file.o crypto.o
 SERVER_OBJ:=$(addprefix server/, $(SERVER_OBJ))
 
 debug: CFLAGS+=-g
@@ -19,7 +19,7 @@ $(CLIENT_OBJ): lib$(NAME).h server.h client/*.c
 	cd client && \
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) *.c
 
-$(SERVER_OBJ): lib$(NAME).h server.h server/*.c
+$(SERVER_OBJ): lib$(NAME).h server.h server/self.h server/*.c
 	cd server && \
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) *.c
 
