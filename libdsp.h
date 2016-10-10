@@ -3,7 +3,8 @@
 
 #define DSP_HASH_LENGTH 32
 
-struct dsp_self;
+// server identifier
+struct dsp_host;
 struct dsp_node {
     unsigned char fingerprint[DSP_HASH_LENGTH];
 };
@@ -18,11 +19,11 @@ struct dsp_file {
     unsigned int *blocks;
 };
 
-/* dsp_connect binds a dsp_self object to a host.
+/* dsp_connect binds a dsp_host object to a host.
  *  returns
- *      pointer to dsp_self object
+ *      pointer to dsp_host object
  */
-struct dsp_self *dsp_connect ();
+struct dsp_host *dsp_connect ();
 
 /* dsp_list_stored_nodes traverses the node list and returns a list of
  *      fingerprints
@@ -33,7 +34,7 @@ struct dsp_self *dsp_connect ();
  *          initialized with the ordered list of fingerprints
  *      updates *num to number of returned nodes
  */
-unsigned char *dsp_list_stored_nodes (int *num, struct dsp_self *);
+unsigned char *dsp_list_stored_nodes (int *num, struct dsp_host *);
 
 /* dsp_list_stored_files returns a list of stored files
  *  accepts
@@ -42,7 +43,7 @@ unsigned char *dsp_list_stored_nodes (int *num, struct dsp_self *);
  *      newly allocated array of file structs
  *      updates *num to number of files
  */
-struct file *dsp_list_stored_files (int *num, struct dsp_self *);
+struct file *dsp_list_stored_files (int *num, struct dsp_host *);
 
 /* dsp_return_node returns the node with the given fingerprint.  If the node is
  *      not stored, the network is queried to find the node.
@@ -51,6 +52,6 @@ struct file *dsp_list_stored_files (int *num, struct dsp_self *);
  *  returns
  *      new dsp_node object, zero-filled if node not found
  */
-struct dsp_node dsp_return_node (unsigned char *fingerprint, struct dsp_self *);
+struct dsp_node dsp_return_node (unsigned char *fingerprint, struct dsp_host *);
 
 #endif
