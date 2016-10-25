@@ -8,13 +8,16 @@ Nodes are verified by requesting their public key, and comparing its hash to the
 
 A given server has the following file structure:
 
-nodes/
-files/
-keys/
+.dsp/
+    keys/
+        private
+        public
+    nodes/
+    objects/
     authorized
-    private
-    public
-config
+    blacklist
+    config
+    files
 
 ## Client
 
@@ -24,33 +27,23 @@ config
 
 **SYNOPSIS**
 
-    **dsp** [option [...]]
+    dsp [option [...]]
 
 **OPTIONS**
 
-    **-h, --help**
-
+    -h, --help
         Display help and exit.
 
-    **-s, --server** [<directory> | <fingerprint>] [option [...]]
-
+    -s, --server [<directory> | <fingerprint>]
         Binds the client to the server with fingerprint <fingerprint>, or living
-        at <directory>.  If <directory> is specified but no server instance is
-        running, the server is initialized.  Server options:
+        at <directory>.
 
-        **ephemeral**
+    -i, --initialize [<path>]
+        Initialize a new server at <path>, or the current directory if not
+        specified.
 
-            Initializes an ephemeral (in-memory) server hosting files at
-            <directory>.  Must be used with *bootstrap=*, and no existing
-            server can be specified.
+    -c, --config [option [...]]
+        Reads config from stdin, although specified options take precedence.
 
-        **bootstrap=**<fingerprint>
-
+        bootstrap=<fingerprint>
             Bootstrap node to populate empty stored nodes list.
-
-        **node-bucket-size=**<exponent>
-
-            Sets the number of allowable stored nodes by specifying bucket size
-            as 2^<exponent>.  The number of buckets is equal to the number of
-            bits in a fingerprint.  Must be a value between 0 and 255.
-

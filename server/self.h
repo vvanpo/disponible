@@ -11,13 +11,8 @@ struct node;
 struct file;
 
 struct self {
-    struct {
-        // ephemeral instances are memory-only, except for files
-        bool ephemeral;
-        // bootstrap node is used to populate an empty stored nodes list
-        struct node *bootstrap;
-        int node_bucket_sz_exp;
-    } config;
+    // dsp directory, defaults to ~/.dsp
+    char *path;
     // stored nodes list
     struct node *stored_nodes[HASH_LEN * 8 - 1];
     // stored files list
@@ -25,6 +20,8 @@ struct self {
 };
 
 // self.c
+
+// config.c
 
 // node.c
 
