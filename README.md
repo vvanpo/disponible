@@ -8,7 +8,7 @@ Every node is given a fingerprint based on a unique public key.  Every node keep
 
 Nodes are verified by requesting their (signed) public key, and comparing its hash to the given fingerprint.  To find a particular node not yet known to the host, a request is sent to the known nodes closest to the node to be found.  These requests traverse through the network until the node is found.
 
-### Server
+## Server
 
 A given server has the following file structure:
 
@@ -36,13 +36,12 @@ A given server has the following file structure:
     -h, --help
         Display help and exit.
 
-    -s, --server [<directory> | <fingerprint>]
-        Binds the client to the server with fingerprint <fingerprint>, or living
-        at <directory>.
+    -s, --server [<fingerprint>]
+        Binds the client to the local server, or a remote server with
+        fingerprint <fingerprint>.
 
-    -i, --initialize [<path>]
-        Initialize a new server at <path>, or the current directory if not
-        specified.
+    -i, --initialize
+        Initialize a new server.
 
     -c, --config [option [...]]
         Reads config from stdin, although specified options take precedence.

@@ -8,15 +8,10 @@
 #define HASH_LEN DSP_HASH_LENGTH
 
 struct node;
-struct file;
 
 struct self {
-    // dsp directory, defaults to ~/.dsp
-    char *path;
-    // stored nodes list
-    struct node *stored_nodes[HASH_LEN * 8 - 1];
-    // stored files list
-    struct file *stored_files;
+    // nodes list
+    struct node *nodes[HASH_LEN * 8 - 1];
 };
 
 // self.c
@@ -24,8 +19,6 @@ struct self {
 // config.c
 
 // node.c
-
-// file.c
 
 // crypto.c
 void hash (unsigned char *out, void const *in, size_t len);
