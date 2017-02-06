@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 #include <nacl/crypto_box.h>
 #include <nacl/crypto_hash.h>
@@ -13,7 +14,7 @@ struct keys {
     unsigned char private[PRIVATE_KEY_LENGTH];
 };
 
-void hash (unsigned char *out, void const *in, size_t length)
+void hash (unsigned char *out, void *in, int length)
 {
     assert(crypto_hash_BYTES >= HASH_LENGTH);
     unsigned char h[crypto_hash_BYTES];

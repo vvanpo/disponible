@@ -1,43 +1,64 @@
 #ifndef SELF_H
 #define SELF_H
 
-#include <stddef.h>
 #include <stdbool.h>
 
 #define HASH_LENGTH 32
 
-// self.c
 struct self;
-struct self *new (char *directory, struct config *config);
-struct self *load (char *directory);
-struct self *bind (char *address);
-void stop (struct self *self);
-
-// config.c
 struct config;
-struct config *new_config ();
-struct config *load_config (FILE *file);
-void write_config (FILE *file);
-
-// node.c
-struct nodes;
-struct nodes *new_nodes ();
-struct nodes *load_nodes (char *directory);
-void write_nodes (char *directory);
-
-// crypto.c
 struct keys;
 struct public_key;
-struct keys *new_keys ();
-struct keys *load_keys ();
-void hash (unsigned char *out, void const *in, size_t length);
+struct nodes;
+struct server;
 
-// message.c
-struct node *find_node (unsigned char *fingerprint);
-void message_send (unsigned char *message, struct node *node);
-void message_handler (void *message);
+// self.c
+    struct self *new (char *dir, struct config *config);
+    struct self *load (char *dir);
+    void stop (struct self *self);
 
-// socket.c
-void listen (struct self *self);
+// config.c
+    struct config *new_config ();
+    struct config *load_config ();
+    void write_config ();
+
+// crypto.c
+    struct keys *new_keys ();
+    struct keys *load_keys ();
+    void write_keys ();
+    void hash (unsigned char *out, void *in, int length);
+
+// nodes.c
+    struct nodes *new_nodes ();
+    struct nodes *load_nodes ();
+    void write_nodes ();
+
+// msg.c
+
+    /* msg_find sends a message to the node(s) nearest to <hash>, requesting the
+     *      resource identified by <hash>.  The messaged nodes will propagate
+     *      the request through the network until a node owning the resource is
+     *      found.
+     *  returns
+     *      a null-terminated array of node objects
+     */
+    struct node *msg_find (unsigned char *hash, struct nodes *nodes);
+
+    /* msg_verify exchanges public keys with <node> and verifies that it matches
+     *      the fingerprint.
+     */
+    bool msg_verify (struct node *node);
+    void msg_send (void *payload, struct node *node);
+    /* msg_handler takes an incoming message from <node> and decides how to
+     *      respond.
+     */
+    void msg_handler (void *message, struct node *node);
+
+// net.c
+
+    /* net_serve retrieves incoming messages and hands them off to msg_handler.
+     */
+    struct server *net_serve (struct self *self);
+    int net_send (void *message, char *address, struct self *self);
 
 #endif

@@ -7,7 +7,7 @@ CLIENT_SRCS=client
 CLIENT_SRCS:=$(addprefix client/, $(CLIENT_SRCS:%=%.c))
 CLIENT_OBJ:=$(CLIENT_SRCS:%.c=%.o)
 
-SRCS=self config node crypto
+SRCS=self config crypto node msg net
 SRCS:=$(SRCS:%=%.c)
 OBJ:=$(SRCS:%.c=%.o)
 

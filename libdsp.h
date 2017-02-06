@@ -11,7 +11,7 @@ struct dsp_config;
 // peer identifier
 struct dsp_node;
 
-/* dsp_new creates a new instance of a dsp node at the passed directory,
+/* dsp_new creates a new instance of a dsp node at <directory>,
  *  accepts
  *      directory string: the relative or absolute address where the node
  *          instance lives
@@ -21,8 +21,7 @@ struct dsp_node;
  */
 struct dsp_self *dsp_new (char *directory, struct dsp_config *config);
 
-/* dsp_load starts an existing instance of a dsp node living at the passed
- *      directory.
+/* dsp_load starts an existing instance of a dsp node living <directory>.
  *  accepts
  *      directory string: the relative or absolute address where the node
  *          instance lives
@@ -55,8 +54,8 @@ unsigned char *dsp_list_nodes (int *n, struct dsp_self *);
  *  accepts
  *      fingerprint of length DSP_HASH_LENGTH
  *  returns
- *      new dsp_node object, zero-filled if node not found
+ *      new dsp_node object, null if node not found
  */
-struct dsp_node dsp_return_node (unsigned char *fingerprint, struct dsp_self *);
+struct dsp_node *dsp_return_node (unsigned char *fingerprint, struct dsp_self *);
 
 #endif
