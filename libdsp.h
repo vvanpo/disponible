@@ -1,23 +1,45 @@
 #ifndef _LIBDSP_H
 #define _LIBDSP_H
 
-#define DSP_HASH_LENGTH 32
+/* libdsp can create or connect to a dsp node.
+ */
 
 // instance object 
 struct dsp_self;
+// configuration values
+struct dsp_config;
 // peer identifier
-struct dsp_node {
-    unsigned char fingerprint[DSP_HASH_LENGTH];
-};
+struct dsp_node;
 
-/* dsp_connect establishes an authorized connection to a node, to send commands
- *      and retrieve data.
+/* dsp_new creates a new instance of a dsp node at the passed directory,
+ *  accepts
+ *      directory string: the relative or absolute address where the node
+ *          instance lives
+ *      pointer to dsp_config object
  *  returns
- *      pointer to dsp_self object
+ *      pointer to a dsp_self object
  */
-struct dsp_self *dsp_connect ();
+struct dsp_self *dsp_new (char *directory, struct dsp_config *config);
 
-/* dsp_list_nodes traverses the node list and returns a list of fingerprints
+/* dsp_load starts an existing instance of a dsp node living at the passed
+ *      directory.
+ *  accepts
+ *      directory string: the relative or absolute address where the node
+ *          instance lives
+ *  returns
+ *      pointer to a dsp_self object
+ */
+struct dsp_self *dsp_load (char *directory);
+
+/* dsp_bind establishes an authorized connection to a running instance.
+ *  accepts
+ *      address string: the internet socket address to connect to
+ *  returns
+ *      pointer to a dsp_self object
+ */
+struct dsp_self *dsp_bind (char *address);
+
+/* dsp_list_nodes traverses the nodes list and returns a list of fingerprints
  *  accepts
  *      pointer to existing int
  *  returns

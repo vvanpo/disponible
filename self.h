@@ -3,25 +3,41 @@
 
 #include <stddef.h>
 #include <stdbool.h>
-#include <nacl/crypto_box.h>
-#include "libdsp.h"
 
-#define PUBLIC_KEY_LEN crypto_box_PUBLICKEYBYTES
-#define PRIVATE_KEY_LEN crypto_box_SECRETKEYBYTES
-#define HASH_LENGTH DSP_HASH_LENGTH
-
+#define HASH_LENGTH 32
 
 // self.c
 struct self;
+struct self *new (char *directory, struct config *config);
+struct self *load (char *directory);
+struct self *bind (char *address);
+void stop (struct self *self);
 
 // config.c
 struct config;
+struct config *new_config ();
+struct config *load_config (FILE *file);
+void write_config (FILE *file);
 
 // node.c
-struct node_list;
+struct nodes;
+struct nodes *new_nodes ();
+struct nodes *load_nodes (char *directory);
+void write_nodes (char *directory);
 
 // crypto.c
-void hash (unsigned char *out, void const *in, size_t len);
-void new_keypair (unsigned char *public, unsigned char *private);
+struct keys;
+struct public_key;
+struct keys *new_keys ();
+struct keys *load_keys ();
+void hash (unsigned char *out, void const *in, size_t length);
+
+// message.c
+struct node *find_node (unsigned char *fingerprint);
+void message_send (unsigned char *message, struct node *node);
+void message_handler (void *message);
+
+// socket.c
+void listen (struct self *self);
 
 #endif

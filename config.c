@@ -4,7 +4,7 @@
 
 struct config {
     unsigned int bucket_length;
-    char *bootstrap_node;
+    char *bootstrap_address;
 };
 
 struct config *config_default ()

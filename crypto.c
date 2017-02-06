@@ -1,23 +1,39 @@
-#include <nacl/crypto_hash_sha256.h>
+#include <assert.h>
+#include <string.h>
+#include <nacl/crypto_box.h>
+#include <nacl/crypto_hash.h>
 
 #include "self.h"
 
-void hash (unsigned char *out, void const *in, size_t len)
+#define PUBLIC_KEY_LENGTH crypto_box_PUBLICKEYBYTES
+#define PRIVATE_KEY_LENGTH crypto_box_SECRETKEYBYTES
+
+struct keys {
+    unsigned char public[PUBLIC_KEY_LENGTH];
+    unsigned char private[PRIVATE_KEY_LENGTH];
+};
+
+void hash (unsigned char *out, void const *in, size_t length)
 {
-    crypto_hash_sha256(out, in, len);
+    assert(crypto_hash_BYTES >= HASH_LENGTH);
+    unsigned char h[crypto_hash_BYTES];
+    crypto_hash(h, in, length);
+    memcpy(out, h, HASH_LENGTH);
 }
 
-void base64_encode (char *out, void const *in, size_t len)
+void base64_encode (char *out, void const *in, size_t length)
 {
     
 }
 
-int base64_decode (void *out, size_t *len, char const *in)
+int base64_decode (void *out, size_t *length, char const *in)
 {
     
 }
 
-void new_keypair (unsigned char *public, unsigned char *private)
+struct keys *new_keys ()
 {
-    crypto_box_keypair(private, public);
+    struct keys *keys = malloc(sizeof(struct keys));
+    crypto_box_keypair(keys->private, keys->public);
+    return keys;
 }

@@ -12,7 +12,7 @@ Nodes are verified by requesting their (signed) public key, and comparing its ha
 
 A given instance has the following file structure:
 
-    /
+    ./
         keys/
             private
             public
