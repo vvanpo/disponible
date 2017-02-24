@@ -39,7 +39,7 @@ int file_identify (struct file *file)
     } while (n == block_size);
     if (ferror(fd)) return -1;
     assert(feof(fd));
-    flose(fd);
+    close(fd);
     free(buffer);
     crypto_hash_sha256(file->identifier, manifest, 32 * num_blocks);
     if (symlink(path, file->identifier)) return -1;
