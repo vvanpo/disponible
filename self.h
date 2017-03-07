@@ -8,9 +8,7 @@
 struct self;
 struct config;
 struct keys;
-struct public_key;
 struct nodes;
-struct server;
 
 // self.c
     struct self *new (char *dir, struct config *config);
@@ -56,7 +54,7 @@ struct server;
 // net.c
 
     // net_serve retrieves incoming messages and hands them off to msg_handler.
-    struct server *net_serve (struct self *self);
+    void net_serve (struct self *self);
     int net_send (void *message, char *address, struct self *self);
 
 #endif
