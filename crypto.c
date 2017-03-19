@@ -38,3 +38,8 @@ struct keys *new_keys ()
     crypto_box_keypair(keys->private, keys->public);
     return keys;
 }
+
+void destroy_keys (struct keys *keys)
+{
+    free(keys);
+}

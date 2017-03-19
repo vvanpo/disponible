@@ -12,6 +12,7 @@
     // load_config initializes a config structure using the values from
     //  <path>/config.
     struct config *load_config (char *path);
+    void destroy_config (struct config *config);
     // write_config overwrites <path>/config.
     void write_config (char *path, struct config *config);
 
@@ -19,28 +20,33 @@
     struct self;
     struct self *new (char *path, struct config *config);
     struct self *load (char *path);
-    void stop (struct self *self);
+    void destroy (struct self *self);
 
 // crypto.c
     struct keys;
     struct keys *new_keys ();
     struct keys *load_keys (char *path);
+    void destroy_keys (struct keys *keys);
     void write_keys (char *path, struct keys *keys);
     void hash (unsigned char *out, void *in, int length);
+
+// node.c
+    // The node structure maintains information about a given peer.
+    struct node;
+    char *node_fingerprint (struct node *node);
 
 // nodes.c
     // The nodes structure is an organized list of peers with which the host has
     //  communicated.
     struct nodes;
     // new_nodes initializes an empty nodes structure.
-    struct nodes *new_nodes ();
+    struct nodes *new_nodes (char *host_fingerprint);
     // load_nodes initializes a nodes structure using the files in
     //  <path>/nodes/.
     struct nodes *load_nodes (char *path);
+    void destroy_nodes (struct nodes *nodes);
     // write_nodes overwrites the directory structure in <path>/nodes/.
     void write_nodes (char *path);
-    // The node structure maintains information about a given peer.
-    struct node;
     void add_node (struct node *node, struct nodes *nodes);
     void remove_node (struct node *node, struct nodes *nodes);
     struct node *return_node (char *fingerprint, struct nodes *nodes);
