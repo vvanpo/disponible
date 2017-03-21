@@ -7,7 +7,7 @@ CLIENT_SRCS=client file
 CLIENT_SRCS:=$(addprefix client/, $(CLIENT_SRCS:%=%.c))
 CLIENT_OBJ:=$(CLIENT_SRCS:%.c=%.o)
 
-SRCS=self config crypto nodes msg net
+SRCS=self config crypto node nodes msg net
 SRCS:=$(SRCS:%=%.c)
 OBJ:=$(SRCS:%.c=%.o)
 
@@ -23,7 +23,7 @@ $(CLIENT_OBJ): lib$(NAME).h client/client.h $(CLIENT_SRCS)
 	cd client && \
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) $(notdir $(CLIENT_SRCS))
 
-$(OBJ): self.h $(SRCS)
+$(OBJ): self.h node.h $(SRCS)
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) $(SRCS)
 
 $(NAME): lib$(NAME).so $(CLIENT_OBJ)

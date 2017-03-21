@@ -28,7 +28,7 @@ struct server *net_serve (struct self *self)
         struct sockaddr_in client_address = {};
         struct client *client = calloc(1, sizeof(struct client));
         if ((client->sockfd = accept(sockfd, client_address,
-                                             sizeof(struct sockaddr_in))) < 0) {
+                        sizeof(struct sockaddr_in))) < 0) {
             switch (errno) {
             case ENETDOWN:
             case EPROTO:

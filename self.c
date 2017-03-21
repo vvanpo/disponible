@@ -7,13 +7,6 @@
 
 #include "self.h"
 
-struct self {
-    char *path;
-    struct config *config;
-    struct keys *keys;
-    struct nodes *nodes;
-};
-
 static struct self *init (char *path)
 {
     struct self *self = calloc(1, sizeof(struct self));
@@ -36,7 +29,7 @@ struct self *new (char *path, struct config *config)
     }
     self->config = config;
     if (!(self->keys = new_keys())) return NULL;
-    if (!(self->nodes = new_nodes())) return NULL;
+    if (!(self->nodes = new_nodes(self->keys))) return NULL;
     net_serve(self);
     return self;
 }

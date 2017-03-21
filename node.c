@@ -1,8 +1,19 @@
 #include "self.h"
+#include "node.h"
 
-struct node {
-    unsigned char fingerprint[HASH_LENGTH];
-    struct public_key *key;
-    unsigned char *address;
-};
+void destroy_node (struct node *node)
+{
+    free(node->key);
+    free(node->address);
+    free(node);
+}
 
+struct public_key *node_key (struct node *node)
+{
+    return node->key;
+}
+
+char *node_address (struct node *node)
+{
+    return node->address;
+}
