@@ -28,8 +28,8 @@ struct self;
         //  i.e. returning the byte-index at which the two hashes begin to
         //  diverge.
         int hash_distance (struct hash *from, struct hash *to);
-        void base64_encode (char *out, void *in, size_t length);
-        void base64_decode (void *out, size_t *length, char *in);
+        char *base64_encode (void *in, size_t length);
+        unsigned char *base64_decode (char *in, size_t *length);
     // Public key functions
         struct public_key;
         struct public_key *new_public_key (void *in);
