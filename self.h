@@ -46,6 +46,8 @@ struct self;
     // The node structure maintains information about a given peer.
     struct node;
     char *node_address (struct node *node);
+    void add_node (struct public_key *key, char *address, struct self *self);
+    void remove_node (struct node *node);
 
 // nodes.c
     // The nodes structure is an organized list of peers with which the host has
@@ -59,8 +61,6 @@ struct self;
     void destroy_nodes (struct nodes *nodes);
     // write_nodes overwrites the directory structure in <path>/nodes/.
     void write_nodes (char *path);
-    void add_node (struct public_key *key, char *address, struct self *self);
-    void remove_node (struct node *node);
     // bump_node moves <node> to the top of its bucket in self->nodes.
     void bump_node (struct node *node);
     // return_node returns the node from self->nodes with the given fingerprint.

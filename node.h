@@ -10,6 +10,10 @@ struct node {
     char *address;
 };
 
+struct nodes {
+    struct node *buckets[8 * HASH_LENGTH - 1];
+};
+
 void destroy_node (struct node *node);
 
 #endif

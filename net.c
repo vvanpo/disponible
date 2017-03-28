@@ -7,27 +7,25 @@
 struct client {
     struct client *next;
     int sockfd;
-}
-
-struct server {
-    int listener;
-    struct client *client;
 };
 
-struct server *net_serve (struct self *self)
+//TODO: handle errors
+void net_serve (struct self *self)
 {
-    struct server *server = malloc(sizeof(struct server));
-    if ((server->listener = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-        return NULL;
+    int listener;
+    if ((listener = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+        return;
     struct sockaddr_in address = {AF_INET, 0, INADDR_ANY};
-    if (!bind(server->listener, &address, sizeof(struct sockaddr_in)))
-        return NULL;
-    if (!listen(server->listender, 128)) return NULL;
+    if (!bind(listener, (struct sockaddr *) &address,
+                sizeof(struct sockaddr_in)))
+        return;
+    if (!listen(listener, 128)) return;
     struct client *previous = NULL;
     while (1) {
         struct sockaddr_in client_address = {};
         struct client *client = calloc(1, sizeof(struct client));
-        if ((client->sockfd = accept(sockfd, client_address,
+        if ((client->sockfd = accept(sockfd,
+                        (struct sockaddr *) &client_address,
                         sizeof(struct sockaddr_in))) < 0) {
             switch (errno) {
             case ENETDOWN:
@@ -40,7 +38,7 @@ struct server *net_serve (struct self *self)
             case ENETUNREACH:
                 continue;
             }
-            return NULL;
+            return;
         }
         if (previous) previous->next = client;
         previous = client;
