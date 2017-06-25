@@ -1,13 +1,11 @@
-NAME=dsp
-
 CPPFLAGS=
-CFLAGS=-std=c11 -Wall -Wno-parentheses
+CFLAGS=-Wall -Wno-parentheses
 
 CLIENT_SRCS=client file
 CLIENT_SRCS:=$(addprefix client/, $(CLIENT_SRCS:%=%.c))
 CLIENT_OBJ:=$(CLIENT_SRCS:%.c=%.o)
 
-SRCS=self config crypto node nodes msg net
+SRCS=dsp db crypto
 SRCS:=$(SRCS:%=%.c)
 OBJ:=$(SRCS:%.c=%.o)
 
@@ -17,20 +15,20 @@ debug: all
 nodebug: CPPFLAGS+=-DNDEBUG
 nodebug: all
 
-all: $(NAME) 
+all: dsp
 
-$(CLIENT_OBJ): lib$(NAME).h client/client.h $(CLIENT_SRCS)
+$(CLIENT_OBJ): libdsp.h client/client.h $(CLIENT_SRCS)
 	cd client && \
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) $(notdir $(CLIENT_SRCS))
 
-$(OBJ): self.h node.h $(SRCS)
-	$(CC) -c $(CFLAGS) $(CPPFLAGS) $(SRCS)
+$(OBJ): dsp.h $(SRCS)
+	$(CC) -fpic -c $(CFLAGS) $(CPPFLAGS) $(SRCS)
 
-$(NAME): lib$(NAME).so $(CLIENT_OBJ)
-	$(CC) -o $(NAME) lib$(NAME).so $(CLIENT_OBJ)
+dsp: libdsp.so $(CLIENT_OBJ)
+	$(CC) -o dsp libdsp.so $(CLIENT_OBJ)
 
-lib$(NAME).so: lib$(NAME).h api.c $(OBJ)
-	$(CC) -shared -fpic -o lib$(NAME).so api.c $(OBJ)
+libdsp.so: libdsp.h $(OBJ)
+	$(CC) -shared -fpic -o libdsp.so $(OBJ)
 
 clean:
-	rm -f $(NAME) lib$(NAME).so $(CLIENT_OBJ) $(OBJ)
+	rm -f dsp libdsp.so $(CLIENT_OBJ) $(OBJ)

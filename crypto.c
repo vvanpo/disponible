@@ -1,10 +1,11 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <nacl/crypto_box.h>
 #include <nacl/crypto_hash.h>
 
-#include "self.h"
+#include "dsp.h"
 
 #define PUBLIC_KEY_LENGTH crypto_box_PUBLICKEYBYTES
 #define PRIVATE_KEY_LENGTH crypto_box_SECRETKEYBYTES
@@ -101,28 +102,19 @@ struct hash *key_fingerprint (struct public_key *key)
 
 // Key-pair functions
 
-struct private_key {
-    unsigned char key[PRIVATE_KEY_LENGTH];
-};
-
 struct keys {
     struct public_key public;
-    struct private_key private;
+    unsigned char private_key[PRIVATE_KEY_LENGTH];
 };
 
 struct keys *new_keys ()
 {
     struct keys *keys = malloc(sizeof(struct keys));
-    crypto_box_keypair(keys->private.key, keys->public.key);
+    crypto_box_keypair(keys->private_key, keys->public.key);
     return keys;
 }
 
-void destroy_keys (struct keys *keys)
-{
-    free(keys);
-}
-
-struct public_key *keys_public_key (struct keys *keys)
+struct public_key *public_key (struct keys *keys)
 {
     return &keys->public;
 }

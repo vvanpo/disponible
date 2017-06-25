@@ -23,32 +23,7 @@ hash to the given fingerprint.  To find a particular node not yet known to the
 host, a request is sent to the known nodes closest to the node to be found. 
 These requests traverse through the network until the node is found.
 
-## Structure
-
-A given instance has the following file structure:
-
-    ./
-        keys/
-            public
-            private
-        nodes/
-        authorized
-        blacklist
-        config
-
-The `keys` folder contains the instance's base64-encoded public and private
-keys.
-
-The `nodes` folder contains a file for every node in the instance's node list, 
-identified by their fingerprint (in hexadecimal).
-
-`authorized` contains a list of base64-encoded public keys that grant priveleges
-to send commands to the instance.
-
-`blacklist` contains a list of fingerprints and network addresses that this
-instance should ignore.
-
-## Manual
+## Client manual
 
 **NAME**
 
@@ -56,27 +31,20 @@ instance should ignore.
 
 **SYNOPSIS**
 
-    dsp [option [...]]
+    dsp [OPTIONS]
+
+    dsp COMMAND [ARG...]
 
 **DESCRIPTION**
 
     dsp instantiates a dsp node, or retrieves data and sends commands if an
-    instance already exists (using the DSP_ADDRESS environment variable).
+    instance already exists.
 
 **OPTIONS**
 
     -h, --help
         Display this help and exit.
 
-    -s, --start [<directory>]
-        Start an existing dsp node at <directory>, present directory if empty.
+    -i, --interactive
 
-    -i, --initialize [<directory>]
-        Initialize a new dsp node, returning the fingerprint.
-
-    -c, --config [option [...]]
-        Reads config from stdin, although specified options take precedence.
-
-        bootstrap=<fingerprint>
-            A bootstrap node provides routes to peers to populate an empty nodes
-            list.
+**COMMANDS**
