@@ -15,7 +15,9 @@ struct dsp {
     unsigned char *public_key;
     unsigned char *secret_key;
     struct db *db;
+    char *address;
     int port;
+    char *bootstrap_address;
     // Each bucket contains a list of nodes with a currently-established
     //  connection.
     struct node *bucket[HASH_LENGTH];
@@ -62,6 +64,12 @@ struct dsp {
 // db.c
     dsp_error db_open (struct db **);
     dsp_error db_close (struct db *);
+    dsp_error select_node (
+        struct db *db,
+        unsigned char *fingerprint,
+        struct node **node
+    );
+    dsp_error update_node (struct db *db, struct node *node);
 
 // net.c
     dsp_error net_listen (struct dsp *dsp);
@@ -72,6 +80,12 @@ struct dsp {
     );
 
 // node.c
+    struct node {
+        unsigned char fingerprint[HASH_LENGTH];
+        unsigned char public_key[PUBLIC_KEY_LENGTH];
+        char *address;
+        struct node *next;
+    };
     dsp_error find_node (
         struct dsp *dsp,
         struct hash *fingerprint,   // the fingerprint to find
