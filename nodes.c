@@ -2,40 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "self.h"
-#include "node.h"
+#include "dsp.h"
 
 // Extern functions
-
-struct nodes *new_nodes ()
-{
-    return calloc(1, sizeof(struct nodes));
-}
-
-struct nodes *load_nodes (char *path)
-{
-    struct nodes *nodes = new_nodes();
-    //TODO
-    return nodes;
-}
-
-void destroy_nodes (struct nodes *nodes)
-{
-    for (int i = 0; i < 8 * HASH_LENGTH - 1; i++) {
-        struct node *node = nodes->buckets[i];
-        while (node) {
-            struct node *next = node->next;
-            destroy_node(node);
-            node = next;
-        }
-    }
-    free(nodes);
-}
-
-void write_nodes (char *path)
-{
-
-}
 
 void bump_node (struct node *node)
 {

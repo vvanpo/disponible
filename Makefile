@@ -1,11 +1,11 @@
 CPPFLAGS=
-CFLAGS=-Wall -Wpedantic -Wno-parentheses
+CFLAGS=-Wall -Wpedantic -Wno-parentheses -Wno-missing-braces
 
 CLIENT_SRCS=client
 CLIENT_SRCS:=$(addprefix client/, $(CLIENT_SRCS:%=%.c))
 CLIENT_OBJ:=$(CLIENT_SRCS:%.c=%.o)
 
-SRCS=dsp error db crypto
+SRCS=dsp error db crypto net
 SRCS:=$(SRCS:%=%.c)
 OBJ:=$(SRCS:%.c=%.o)
 
@@ -13,6 +13,7 @@ debug: CFLAGS+=-g
 debug: all
 
 nodebug: CPPFLAGS+=-DNDEBUG
+nodebug: CFLAGS+=-O2
 nodebug: all
 
 all: dsp

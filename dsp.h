@@ -3,10 +3,16 @@
 
 #define _POSIX_C_SOURCE 200809L 
 
+#include <netinet/ip.h>
 #include <stddef.h>
+
 #include "libdsp.h"
 
-#define HASH_LENGTH DSP_HASH_LENGTH
+struct dsp {
+    struct keys *keys;
+    struct db *db;
+    int port;
+};
 
 // error.c
 #ifdef NDEBUG
@@ -56,6 +62,17 @@
     struct db;
     dsp_error db_open (struct db **);
     dsp_error db_close (struct db *);
+
+// net.c
+    dsp_error net_listen (struct dsp *dsp);
+    dsp_error handle_client (
+        struct dsp *dsp,
+        int client,
+        struct sockaddr_in *client_address
+    );
+
+// node.c
+    struct node;
 
 /*
 // msg.c

@@ -1,4 +1,4 @@
-#include "self.h"
+#include "dsp.h"
 
 struct node *msg_find (struct hash *hash, struct self *self)
 {

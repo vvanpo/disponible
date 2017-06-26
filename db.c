@@ -5,9 +5,14 @@
 
 #include "dsp.h"
 
+#define DB_NAME "db"
+
 char const * const schema =
-    "CREATE TABLE bucket (number INTEGER PRIMARY KEY);"
-    "CREATE TABLE node (fingerprint PRIMARY KEY, address TEXT NOT NULL, public_key);";
+    "CREATE TABLE node ("
+        "fingerprint PRIMARY KEY,"
+        "bucket INTEGER NOT NULL,"
+        "address TEXT NOT NULL,"
+        "public_key);";
 
 struct db {
     sqlite3 *conn;
@@ -68,7 +73,7 @@ dsp_error db_open (struct db **db) {
     dsp_error err;
     if (!(*db = malloc(sizeof(struct db))))
         return error(DSP_E_SYSTEM);
-    if (ret = sqlite3_open("db", &(*db)->conn))
+    if (ret = sqlite3_open(DB_NAME, &(*db)->conn))
         return error(DSP_E_DATABASE);
     if (err = validate_schema(*db))
         return trace(err);

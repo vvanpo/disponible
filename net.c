@@ -1,32 +1,23 @@
 #include <errno.h>
-#include <netinet/ip.h>
 #include <sys/socket.h>
 
-#include "self.h"
+#include "dsp.h"
 
-struct client {
-    struct client *next;
-    int sockfd;
-};
+#define LISTEN_BACKLOG 128
 
-//TODO: handle errors
-void net_serve (struct self *self)
+dsp_error net_listen (struct dsp *dsp)
 {
-    int listener;
-    if ((listener = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-        return;
-    struct sockaddr_in address = {AF_INET, 0, INADDR_ANY};
-    if (!bind(listener, (struct sockaddr *) &address,
-                sizeof(struct sockaddr_in)))
-        return;
-    if (!listen(listener, 128)) return;
-    struct client *previous = NULL;
-    while (1) {
-        struct sockaddr_in client_address = {};
-        struct client *client = calloc(1, sizeof(struct client));
-        if ((client->sockfd = accept(sockfd,
-                        (struct sockaddr *) &client_address,
-                        sizeof(struct sockaddr_in))) < 0) {
+    int listener = socket(AF_INET, SOCK_STREAM, 0);
+    if (listener == -1) return error(DSP_E_SYSTEM);
+    struct sockaddr_in address = {AF_INET, dsp->port, INADDR_ANY};
+    if (bind(listener, (struct sockaddr *) &address,
+            sizeof(struct sockaddr_in))) return error(DSP_E_SYSTEM);
+    if (listen(listener, LISTEN_BACKLOG)) return error(DSP_E_SYSTEM);
+    int client;
+    struct sockaddr_in client_address;
+    while (client = accept(listener, (struct sockaddr *) &client_address,
+                (socklen_t *) sizeof(struct sockaddr_in))) {
+        if (client < 0) {
             switch (errno) {
             case ENETDOWN:
             case EPROTO:
@@ -38,14 +29,16 @@ void net_serve (struct self *self)
             case ENETUNREACH:
                 continue;
             }
-            return;
+            return error(DSP_E_SYSTEM);
         }
-        if (previous) previous->next = client;
-        previous = client;
+        dsp_error err;
+        if (err = handle_client(dsp, client, &client_address))
+            return trace(err);
     }
+    return NULL;
 }
 
-int net_send (void *message, char *address, struct self *self)
+dsp_error handle_client (struct dsp *dsp, int client, struct sockaddr_in *client_address)
 {
-
+    return NULL;
 }

@@ -70,9 +70,12 @@ static char *error_message (int code)
     case DSP_E_SYSTEM:
         strcpy(buf, sys_prefix);
         // Only fails on invalid errno or insufficient buffer size
-        int ret = strerror_r(errno, buf + strlen(sys_prefix),
+        assert(strerror_r(errno, buf + strlen(sys_prefix),
+                BUF_SZ - strlen(sys_prefix)));
+#ifdef NDEBUG
+        strerror_r(errno, buf + strlen(sys_prefix),
                 BUF_SZ - strlen(sys_prefix));
-        assert(!ret);
+#endif
         break;
     case DSP_E_DATABASE:
         strcpy(buf, db_prefix);

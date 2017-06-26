@@ -5,11 +5,6 @@
 
 #include "dsp.h"
 
-struct dsp {
-    struct keys *keys;
-    struct db *db;
-};
-
 dsp_error dsp_init (char const *path, struct dsp **dsp)
 {
     dsp_error err;
@@ -29,5 +24,14 @@ dsp_error dsp_init (char const *path, struct dsp **dsp)
         log_error(err = trace(err));
         return err;
     }
+    if (err = net_listen(*dsp)) return trace(err);
+    return NULL;
+}
+
+dsp_error dsp_close (struct dsp *dsp)
+{
+    dsp_error err = db_close(dsp->db);
+    if (err) return trace(err);
+    free(dsp);
     return NULL;
 }

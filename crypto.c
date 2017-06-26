@@ -7,14 +7,15 @@
 
 #include "dsp.h"
 
+#define HASH_LENGTH DSP_HASH_LENGTH
 #define PUBLIC_KEY_LENGTH crypto_box_PUBLICKEYBYTES
 #define PRIVATE_KEY_LENGTH crypto_box_SECRETKEYBYTES
+
+// Hash functions
 
 struct hash {
     unsigned char hash[HASH_LENGTH];
 };
-
-// Utility functions
 
 struct hash *hash (void *in, size_t length)
 {
@@ -32,6 +33,8 @@ int hash_distance (struct hash *from, struct hash *to)
         if (from->hash[i] != to->hash[i]) return HASH_LENGTH - i;
     return 0;
 }
+
+// Base-64 functions
 
 char *base64_encode (void *in, size_t length)
 {
