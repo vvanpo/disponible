@@ -26,10 +26,10 @@ dsp: libdsp.so $(CLIENT_OBJ)
 	$(CC) -L. -o dsp $(CLIENT_OBJ) -ldsp
 
 $(OBJ): dsp.h $(SRCS)
-	$(CC) -fpic -c $(CFLAGS) $(CPPFLAGS) $(SRCS)
+	$(CC) -fpic -pthread -c $(CFLAGS) $(CPPFLAGS) $(SRCS)
 
 libdsp.so: libdsp.h $(OBJ)
-	$(CC) -shared -o libdsp.so $(OBJ) -lm -lsqlite3 -l:libnacl.a -l:randombytes.o
+	$(CC) -shared -pthread -o libdsp.so $(OBJ) -lm -lsqlite3 -l:libnacl.a -l:randombytes.o
 
 clean:
 	rm -f dsp libdsp.so $(CLIENT_OBJ) $(OBJ)

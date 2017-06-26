@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -24,7 +25,13 @@ dsp_error dsp_init (char const *path, struct dsp **dsp)
         log_error(err = trace(err));
         return err;
     }
-    if (err = net_listen(*dsp)) return trace(err);
+    pthread_t listener;
+    int ret = pthread_create(&listener, NULL, (void * (*)(void *)) net_listen,
+            *dsp);
+    if (ret) {
+        //TODO doesn't set errno
+        return error(DSP_E_SYSTEM);
+    }
     return NULL;
 }
 

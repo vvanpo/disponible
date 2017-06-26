@@ -69,7 +69,8 @@ struct dsp {
         unsigned char *fingerprint,
         struct node **node
     );
-    dsp_error update_node (struct db *db, struct node *node);
+    dsp_error insert_node (struct db *db, struct node *node);
+    dsp_error update_node_address (struct db *db, struct node *node);
 
 // net.c
     dsp_error net_listen (struct dsp *dsp);
