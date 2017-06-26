@@ -7,15 +7,29 @@
 
 // Error codes
 enum {
-    DSP_OK,
-    DSP_ESYSTEM,
-    DSP_ESQLITE
+    DSP_E_INVALID,
+    DSP_E_SYSTEM,
+    DSP_E_DATABASE
 };
 
-// dsp_error returns a description corresponding to the passed error code.
-//  Returned string does not need to be freed.
-char *dsp_error (
-    int code            // error code returned by dsp functions
+typedef struct dsp_error * dsp_error;
+
+// dsp_error_code returns the error code corresponding to the passed dsp_error
+//  object.  Returns DSP_E_INVALID when passed an invalid error object.
+int dsp_error_code (
+    dsp_error
+);
+
+// dsp_error_message returns a message describing the passed error.  The
+//  returned string is part of the dsp_error object and is freed on a call
+//  to dsp_error_free().
+char *dsp_error_message (
+    dsp_error           // the error object to describe
+);
+
+// dsp_error_free frees the memory allocated to the dsp_error object.
+void dsp_error_free (
+    dsp_error           // the error object to be freed
 );
 
 // Instance object 
@@ -26,20 +40,20 @@ struct dsp_node;
 
 // dsp_init initializes an instance of a dsp node at <directory>, creating a new
 //  node if one does not exist.
-int dsp_init (
-    char *path,         // the relative or absolute path where the node instance
+dsp_error dsp_init (
+    char const *path,   // the relative or absolute path where the node instance
                         //  lives
     struct dsp **dsp    // OUT: new instance object
 );
 
 // dsp_bind establishes an authorized connection to a running instance.
-int dsp_bind (
+dsp_error dsp_bind (
     char *address,      // the internet socket address to connect to
     struct dsp **dsp    // OUT: new instance object
 );
 
 // dsp_close disconnects from the running instance.
-int dsp_close (
+dsp_error dsp_close (
     struct dsp *dsp
 );
 /*

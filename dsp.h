@@ -3,21 +3,45 @@
 
 #define _POSIX_C_SOURCE 200809L 
 
+#include <stddef.h>
 #include "libdsp.h"
 
 #define HASH_LENGTH DSP_HASH_LENGTH
 
-#define ERR_BUF 1024
-char error_msg[ERR_BUF];
+// error.c
+#ifdef NDEBUG
+# define error(code) new_error(code)
+# define trace(error) error
+    dsp_error new_error (int code);
+#else
+# define error(code) new_error(code, __func__, __FILE__, __LINE__)
+# define trace(error) trace_error(error, __func__, __FILE__, __LINE__)
+    dsp_error new_error (
+        int code,
+        char const *function,
+        char const *file,
+        int line
+    );
+    dsp_error trace_error (
+        dsp_error error,
+        char const *function,
+        char const *file,
+        int line
+    );
+#endif
+    void set_error_message (dsp_error error, char *message);
+    // Writes error message and trace to stderr.
+    void log_error (dsp_error error);
 
 // crypto.c
-    struct hash;
-    // Utility functions
+    // Hash functions
+        struct hash;
         struct hash *hash (void *in, size_t length);
         // hash_distance computes the distance function between two hashes,
         //  i.e. returning the byte-index at which the two hashes begin to
         //  diverge.
         int hash_distance (struct hash *from, struct hash *to);
+    // Base-64 functions
         char *base64_encode (void *in, size_t length);
         unsigned char *base64_decode (char *in, size_t *length);
     // Public key functions
@@ -30,8 +54,8 @@ char error_msg[ERR_BUF];
 
 // db.c
     struct db;
-    int db_open (struct db **);
-    int db_close (struct db *);
+    dsp_error db_open (struct db **);
+    dsp_error db_close (struct db *);
 
 /*
 // msg.c
