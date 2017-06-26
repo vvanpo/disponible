@@ -3,15 +3,22 @@
 
 #define _POSIX_C_SOURCE 200809L 
 
+#include <nacl/crypto_box.h>
 #include <netinet/ip.h>
 #include <stddef.h>
-
 #include "libdsp.h"
 
+#define HASH_LENGTH DSP_HASH_LENGTH
+#define PUBLIC_KEY_LENGTH crypto_box_PUBLICKEYBYTES
+
 struct dsp {
-    struct keys *keys;
+    unsigned char *public_key;
+    unsigned char *secret_key;
     struct db *db;
     int port;
+    // Each bucket contains a list of nodes with a currently-established
+    //  connection.
+    struct node *bucket[HASH_LENGTH];
 };
 
 // error.c
@@ -41,7 +48,6 @@ struct dsp {
 
 // crypto.c
     // Hash functions
-        struct hash;
         struct hash *hash (void *in, size_t length);
         // hash_distance computes the distance function between two hashes,
         //  i.e. returning the byte-index at which the two hashes begin to
@@ -50,16 +56,10 @@ struct dsp {
     // Base-64 functions
         char *base64_encode (void *in, size_t length);
         unsigned char *base64_decode (char *in, size_t *length);
-    // Public key functions
-        struct public_key;
-        struct hash *key_fingerprint (struct public_key *key);
-    // Key-pair functions
-        struct keys;
-        struct keys *new_keys ();
-        struct public_key *public_key (struct keys *keys);
+    // Public-key crypto functions
+        dsp_error new_keys (unsigned char **public, unsigned char **secret);
 
 // db.c
-    struct db;
     dsp_error db_open (struct db **);
     dsp_error db_close (struct db *);
 
@@ -72,7 +72,16 @@ struct dsp {
     );
 
 // node.c
-    struct node;
+    dsp_error find_node (
+        struct dsp *dsp,
+        struct hash *fingerprint,   // the fingerprint to find
+        struct node **node          // OUT: the returned node object
+    );
+    dsp_error key_exchange (
+        struct dsp *dsp,
+        char const *address,
+        struct node **node          // OUT: the returned node object
+    );
 
 /*
 // msg.c

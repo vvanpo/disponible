@@ -1,6 +1,5 @@
 #include <errno.h>
 #include <sys/socket.h>
-
 #include "dsp.h"
 
 #define LISTEN_BACKLOG 128

@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sqlite3.h>
-
 #include "dsp.h"
 
 #define DB_NAME "db"
@@ -12,7 +11,7 @@ char const * const schema =
         "fingerprint PRIMARY KEY,"
         "bucket INTEGER NOT NULL,"
         "address TEXT NOT NULL,"
-        "public_key);";
+        "public_key NOT NULL);";
 
 struct db {
     sqlite3 *conn;

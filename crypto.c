@@ -1,15 +1,11 @@
 #include <assert.h>
+#include <nacl/crypto_hash.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <nacl/crypto_box.h>
-#include <nacl/crypto_hash.h>
-
 #include "dsp.h"
 
-#define HASH_LENGTH DSP_HASH_LENGTH
-#define PUBLIC_KEY_LENGTH crypto_box_PUBLICKEYBYTES
-#define PRIVATE_KEY_LENGTH crypto_box_SECRETKEYBYTES
+#define SECRET_KEY_LENGTH crypto_box_SECRETKEYBYTES
 
 // Hash functions
 
@@ -92,33 +88,14 @@ unsigned char *base64_decode (char *in, size_t *length)
     return output;
 }
 
-// Public key functions
+// Public-key crypto functions
 
-struct public_key {
-    unsigned char key[PUBLIC_KEY_LENGTH];
-};
-
-struct hash *key_fingerprint (struct public_key *key)
+dsp_error new_keys (unsigned char **public, unsigned char **secret)
 {
-    return hash(key->key, PUBLIC_KEY_LENGTH);
-}
-
-// Key-pair functions
-
-struct keys {
-    struct public_key public;
-    unsigned char private_key[PRIVATE_KEY_LENGTH];
-};
-
-struct keys *new_keys ()
-{
-    struct keys *keys = malloc(sizeof(struct keys));
-    crypto_box_keypair(keys->private_key, keys->public.key);
-    return keys;
-}
-
-struct public_key *public_key (struct keys *keys)
-{
-    return &keys->public;
+    *public = malloc(PUBLIC_KEY_LENGTH);
+    *secret = malloc(SECRET_KEY_LENGTH);
+    if (!*public || !*secret) return error(DSP_E_SYSTEM);
+    crypto_box_keypair(*secret, *public);
+    return NULL;
 }
 
