@@ -16,6 +16,7 @@
 struct connection {
     pthread_t thread;
     pthread_mutex_t mutex;
+    pthread_cond_t cond;
     int socket;
     unsigned char *fingerprint;
     char *address;

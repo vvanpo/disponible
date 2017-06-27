@@ -9,7 +9,8 @@
 enum {
     DSP_E_INVALID,
     DSP_E_SYSTEM,
-    DSP_E_DATABASE
+    DSP_E_DATABASE,
+    DSP_E_NETWORK
 };
 
 typedef struct dsp_error * dsp_error;
