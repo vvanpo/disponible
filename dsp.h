@@ -4,12 +4,25 @@
 #define _POSIX_C_SOURCE 200809L 
 
 #include <nacl/crypto_box.h>
-#include <netinet/ip.h>
+#include <pthread.h>
 #include <stddef.h>
 #include "libdsp.h"
 
 #define HASH_LENGTH DSP_HASH_LENGTH
 #define PUBLIC_KEY_LENGTH crypto_box_PUBLICKEYBYTES
+
+// The connection object describes a current connection with a node, or an
+//  on-going key-exchange process.
+struct connection {
+    pthread_t thread;
+    pthread_mutex_t mutex;
+    int socket;
+    unsigned char *fingerprint;
+    char *address;
+    struct node *node;      // node gets populated after key-exchange has taken
+                            //  place
+    struct handler *next;   // The list is ordered in an LRU fasion
+};
 
 struct dsp {
     unsigned char *public_key;
@@ -21,6 +34,9 @@ struct dsp {
     // Each bucket contains a list of nodes with a currently-established
     //  connection.
     struct node *bucket[HASH_LENGTH];
+    pthread_t listener;
+    // A linked-list of open connections
+    struct connection *connection;
 };
 
 // error.c
@@ -70,31 +86,33 @@ struct dsp {
         struct node **node
     );
     dsp_error insert_node (struct db *db, struct node *node);
-    dsp_error update_node_address (struct db *db, struct node *node);
+    dsp_error update_node (struct db *db, struct node *node);
 
 // net.c
     dsp_error net_listen (struct dsp *dsp);
-    dsp_error handle_client (
+    dsp_error net_connect (
         struct dsp *dsp,
-        int client,
-        struct sockaddr_in *client_address
+        char *address,
+        struct connection **connection      // OUT: the established connection
     );
+    dsp_error net_send (struct dsp *dsp, struct connection *connection, void *message);
 
 // node.c
     struct node {
+        struct handler *handler;
         unsigned char fingerprint[HASH_LENGTH];
         unsigned char public_key[PUBLIC_KEY_LENGTH];
         char *address;
         struct node *next;
     };
-    dsp_error find_node (
-        struct dsp *dsp,
-        struct hash *fingerprint,   // the fingerprint to find
-        struct node **node          // OUT: the returned node object
-    );
     dsp_error key_exchange (
         struct dsp *dsp,
         char const *address,
+        struct node **node          // OUT: the returned node object
+    );
+    dsp_error find_node (
+        struct dsp *dsp,
+        struct hash *fingerprint,   // the fingerprint to find
         struct node **node          // OUT: the returned node object
     );
 

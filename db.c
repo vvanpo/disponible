@@ -181,7 +181,7 @@ dsp_error insert_node (struct db *db, struct node *node)
     return NULL;
 }
 
-dsp_error update_node_address (struct db *db, struct node *node)
+dsp_error update_node (struct db *db, struct node *node)
 {
     return NULL;
 }
