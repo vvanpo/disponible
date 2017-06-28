@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -9,13 +10,16 @@ dsp_error dsp_init (char const *path, struct dsp **dsp)
 {
     dsp_error err;
     if (!(*dsp = calloc(1, sizeof(struct dsp)))) {
-        err = error(DSP_E_SYSTEM);
+        err = sys_error(DSP_E_SYSTEM, errno, "Failed to allocate dsp instance");
+        //TODO: log level in config
         log_error(err);
         return err;
     }
     if (chdir(path)) {
         if (errno != ENOENT || !mkdir(path, 0640) || !chdir(path)) {
-            err = error(DSP_E_SYSTEM);
+            char *msg = NULL;
+            sprintf(msg, "Failed to access %s", path);
+            err = sys_error(DSP_E_SYSTEM, errno, msg);
             log_error(err);
             return err;
         }
@@ -27,14 +31,14 @@ dsp_error dsp_init (char const *path, struct dsp **dsp)
     int ret = pthread_create(&(*dsp)->listener, NULL,
             (void * (*)(void *)) net_listen, *dsp);
     if (ret) {
-        //TODO doesn't set errno
-        return error(DSP_E_SYSTEM);
+        return sys_error(DSP_E_SYSTEM, ret, "Failed to create listener");
     }
     return NULL;
 }
 
 dsp_error dsp_close (struct dsp *dsp)
 {
+    //TODO: cancel threads
     dsp_error err = db_close(dsp->db);
     if (err) return trace(err);
     free(dsp);

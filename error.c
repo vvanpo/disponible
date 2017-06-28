@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <math.h>
+#include <sqlite3.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -54,60 +55,91 @@ void dsp_error_free (dsp_error err)
     free(err);
 }
 
-void set_error_message (dsp_error error, char *message)
-{
-    if (error->message = malloc(strlen(message) + 1))
-        strcpy(error->message, message);
-}
-
 #define BUF_SZ 1024
-static char *error_message (int code)
-{
-    char const *sys_prefix = "System error: ";
-    char const *db_prefix = "Database error: ";
-    char *buf = malloc(BUF_SZ);
-    switch (code) {
-    case DSP_E_SYSTEM:
-        strcpy(buf, sys_prefix);
-        // Only fails on invalid errno or insufficient buffer size
-        assert(strerror_r(errno, buf + strlen(sys_prefix),
-                BUF_SZ - strlen(sys_prefix)));
 #ifdef NDEBUG
-        strerror_r(errno, buf + strlen(sys_prefix),
-                BUF_SZ - strlen(sys_prefix));
-#endif
-        break;
-    case DSP_E_DATABASE:
-        strcpy(buf, db_prefix);
-        break;
-    default:
-        assert(true);
-        strcpy(buf, "Invalid error");
-    }
-    return buf;
-}
-
-#ifdef NDEBUG
-dsp_error new_error (int code)
-{
-    dsp_error err = malloc(sizeof(struct dsp_error));
-    err->code = code;
-    err->message = error_message(code);
-    return err;
-}
+dsp_error new_error (int code, char const *message)
 #else
-dsp_error new_error (int code, char const *function, char const *file, int line)
+dsp_error new_error (int code, char const *message, char const *function, char const *file, int line)
+#endif
 {
-    dsp_error err = malloc(sizeof(struct dsp_error));
+    dsp_error err = calloc(1, sizeof(struct dsp_error));
     err->code = code;
-    err->message = error_message(code);
+#ifndef NDEBUG
     err->trace.function = function;
     err->trace.file = file;
     err->trace.line = line;
     err->trace.up = NULL;
+#endif
+    if (message) {
+        char const *prefix = "Error: ";
+        int i = strlen(prefix);
+        err->message = malloc(i + strlen(message) + 1);
+        strcpy(err->message, prefix);
+        strcpy(err->message + i, message);
+    }
+    return err;
+}
+#ifdef NDEBUG
+dsp_error new_system_error (int code, int sys_err, char const *message)
+#else
+dsp_error new_system_error (int code, int sys_err, char const *message, char const *function, char const *file, int line)
+#endif
+{
+    dsp_error err = calloc(1, sizeof(struct dsp_error));
+    err->code = code;
+#ifndef NDEBUG
+    err->trace.function = function;
+    err->trace.file = file;
+    err->trace.line = line;
+    err->trace.up = NULL;
+#endif
+    char const *prefix = "System error: ";
+    int i = strlen(prefix);
+    int l = i + BUF_SZ;
+    if (message) l += strlen(message) + 2;
+    err->message = malloc(l);
+    strcpy(err->message, prefix);
+    if (message) {
+        strcpy(err->message + i, message);
+        i += strlen(message);
+        strcpy(err->message + i, ": ");
+        i += 2;
+    }
+    strerror_r(sys_err, err->message + i, BUF_SZ);
+    return err;
+}
+#ifdef NDEBUG
+dsp_error new_db_error (int db_err, char const *message)
+#else
+dsp_error new_db_error (int db_err, char const *message, char const *function, char const *file, int line)
+#endif
+{
+    dsp_error err = calloc(1, sizeof(struct dsp_error));
+    err->code = DSP_E_DATABASE;
+#ifndef NDEBUG
+    err->trace.function = function;
+    err->trace.file = file;
+    err->trace.line = line;
+    err->trace.up = NULL;
+#endif
+    char const *prefix = "Database error: ";
+    int i = strlen(prefix);
+    char const *sqlite_err = sqlite3_errstr(db_err);
+    int l = i + strlen(sqlite_err);
+    if (message) l += strlen(message) + 2;
+    err->message = malloc(l);
+    strcpy(err->message, prefix);
+    if (message) {
+        strcpy(err->message + i, message);
+        i += strlen(message);
+        strcpy(err->message + i, ": ");
+        i += 2;
+    }
+    strcpy(err->message + i, sqlite_err);
     return err;
 }
 
+#ifndef NDEBUG
 dsp_error trace_error (dsp_error error, char const *function, char const *file, int line)
 {
     struct trace_elem *e = &error->trace;

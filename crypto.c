@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <errno.h>
 #include <nacl/crypto_hash.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -94,7 +95,8 @@ dsp_error new_keys (unsigned char **public, unsigned char **secret)
 {
     *public = malloc(PUBLIC_KEY_LENGTH);
     *secret = malloc(SECRET_KEY_LENGTH);
-    if (!*public || !*secret) return error(DSP_E_SYSTEM);
+    if (!*public || !*secret) return sys_error(DSP_E_SYSTEM, errno,
+            "Failed to allocate key-pair");
     crypto_box_keypair(*secret, *public);
     return NULL;
 }

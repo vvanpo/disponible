@@ -7,10 +7,11 @@
 
 // Error codes
 enum {
-    DSP_E_INVALID,
-    DSP_E_SYSTEM,
+    DSP_E_INVALID = -1,
+    DSP_E_SYSTEM = 1,
     DSP_E_DATABASE,
-    DSP_E_NETWORK
+    DSP_E_NETWORK,
+    DSP_E_NODE_INVALID
 };
 
 typedef struct dsp_error * dsp_error;

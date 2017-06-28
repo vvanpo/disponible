@@ -14,18 +14,19 @@
 // The connection object describes a current connection with a node, or an
 //  on-going key-exchange process.
 struct connection {
-    pthread_t thread;
+    pthread_t thread;           // thread handling this connection
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     int socket;
-    unsigned char *fingerprint;
     char *address;
-    struct node *node;      // node gets populated after key-exchange has taken
-                            //  place
-    struct handler *next;   // The list is ordered in an LRU fasion
+    struct node *node;          // node gets populated after key-exchange has
+                                //  taken place
+    void **request_buffer;
+    struct connection *next;    // The list is ordered in an LRU fasion
 };
 
 struct dsp {
+    pthread_mutex_t mutex;
     unsigned char *public_key;
     unsigned char *secret_key;
     struct db *db;
@@ -34,22 +35,44 @@ struct dsp {
     char *bootstrap_address;
     // Each bucket contains a list of nodes with a currently-established
     //  connection.
-    struct node *bucket[HASH_LENGTH];
-    pthread_t listener;
-    // A linked-list of open connections
+    struct connection *bucket[HASH_LENGTH];
+    // A linked-list of open connections not tied to node objects
     struct connection *connection;
+    pthread_t listener;
 };
 
 // error.c
 #ifdef NDEBUG
-# define error(code) new_error(code)
-# define trace(error) error
-    dsp_error new_error (int code);
+# define error(code, msg) new_error(code, msg)
+# define sys_error(code, err, msg) new_system_error(code, err, msg)
+# define db_error(err, msg) new_db_error(err, msg)
+# define trace(err) err
+    dsp_error new_error (int code, char const *message);
+    dsp_error new_system_error (int code, int err, char const *message);
+    dsp_error new_db_error (int err, char const *message);
 #else
-# define error(code) new_error(code, __func__, __FILE__, __LINE__)
+# define error(code, msg) new_error(code, msg, __func__, __FILE__, __LINE__)
+# define sys_error(code, err, msg) new_system_error(code, err, msg, __func__, __FILE__, __LINE__)
+# define db_error(err, msg) new_db_error(err, msg, __func__, __FILE__, __LINE__)
 # define trace(error) trace_error(error, __func__, __FILE__, __LINE__)
     dsp_error new_error (
         int code,
+        char const *message,
+        char const *function,
+        char const *file,
+        int line
+    );
+    dsp_error new_system_error (
+        int code,
+        int err,
+        char const *message,
+        char const *function,
+        char const *file,
+        int line
+    );
+    dsp_error new_db_error (
+        int err,
+        char const *message,
         char const *function,
         char const *file,
         int line
@@ -61,7 +84,6 @@ struct dsp {
         int line
     );
 #endif
-    void set_error_message (dsp_error error, char *message);
     // Writes error message and trace to stderr.
     void log_error (dsp_error error);
 
@@ -92,19 +114,15 @@ struct dsp {
 // net.c
     dsp_error net_listen (struct dsp *dsp);
     dsp_error net_connect (
-        struct dsp *dsp,
-        char *address,
+        char *address,                      // network address in host:port form
         struct connection **connection      // OUT: the established connection
     );
-    dsp_error net_send (struct dsp *dsp, struct connection *connection, void *message);
 
 // node.c
     struct node {
-        struct handler *handler;
         unsigned char fingerprint[HASH_LENGTH];
         unsigned char public_key[PUBLIC_KEY_LENGTH];
         char *address;
-        struct node *next;
     };
     dsp_error key_exchange (
         struct dsp *dsp,
