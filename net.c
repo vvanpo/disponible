@@ -3,6 +3,7 @@
 #include <netdb.h>
 #include <netinet/ip.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -16,8 +17,8 @@ static dsp_error parse_address (char *address, struct addrinfo **res)
 {
     char *colon = strrchr(address, ':');
     if (!colon) {
-        //TODO: return an "invalid network address" error
-        return error(DSP_E_NETWORK);
+        return error(DSP_E_NETWORK, "Invalid network address, needs to be of "
+                "the form <host>:<port>");
     }
     int i = colon - address;
     char *host = malloc((i + 1) * sizeof(char));
@@ -33,8 +34,7 @@ static dsp_error parse_address (char *address, struct addrinfo **res)
         *res = NULL;
         free(host);
         char const *err_msg = gai_strerror(ret);
-        //TODO
-        return error(DSP_E_NETWORK);
+        return error(DSP_E_NETWORK, err_msg);
     }
     free(host);
     return NULL;
@@ -49,24 +49,19 @@ static void *client (void *arg)
 {
     struct connection *conn = arg;
     int ret = pthread_mutex_lock(&conn->mutex);
-    if (ret) {
-        //TODO
-        return error(DSP_E_SYSTEM);
-    }
+    if (ret) return sys_error(DSP_E_SYSTEM, ret, NULL);
     while (1) {
         // The client blocks until it is signalled that there is a request in
         //  its buffer
         while (!conn->request_buffer) {
-            if (ret = pthread_cond_wait(&conn->cond, &conn->mutex)) {
-                return error(DSP_E_SYSTEM);
-            }
+            if (ret = pthread_cond_wait(&conn->cond, &conn->mutex))
+                return sys_error(DSP_E_SYSTEM, ret, NULL);
         }
         // Send request
         dsp_error err = send_request(conn);
         if (err) {
             if (ret = pthread_mutex_unlock(&conn->mutex))
-                //TODO
-                return error(DSP_E_SYSTEM);
+                return sys_error(DSP_E_SYSTEM, ret, NULL);
             return trace(err);
         }
     }
@@ -84,13 +79,16 @@ static dsp_error handler (struct dsp *dsp, int client, struct sockaddr_in *clien
 dsp_error net_listen (struct dsp *dsp)
 {
     int listener = socket(AF_INET, SOCK_STREAM, 0);
-    if (listener == -1) return error(DSP_E_SYSTEM);
+    if (listener == -1) return sys_error(DSP_E_SYSTEM, errno,
+            "Failed to open listener network socket");
     // Port in network order
     uint16_t port = htons(dsp->port);
     struct sockaddr_in address = {AF_INET, port, INADDR_ANY};
     if (bind(listener, (struct sockaddr *) &address,
-            sizeof(struct sockaddr_in))) return error(DSP_E_SYSTEM);
-    if (listen(listener, LISTEN_BACKLOG)) return error(DSP_E_SYSTEM);
+                sizeof(struct sockaddr_in)))
+        return sys_error(DSP_E_SYSTEM, errno, "Failed to bind listener port");
+    if (listen(listener, LISTEN_BACKLOG))
+        return sys_error(DSP_E_SYSTEM, errno, NULL);
     int client;
     struct sockaddr_in client_address;
     while (client = accept(listener, (struct sockaddr *) &client_address,
@@ -107,7 +105,8 @@ dsp_error net_listen (struct dsp *dsp)
             case ENETUNREACH:
                 continue;
             }
-            return error(DSP_E_SYSTEM);
+            return sys_error(DSP_E_SYSTEM, errno,
+                    "Failed to accept connection");
         }
         dsp_error err;
         if (err = handler(dsp, client, &client_address))
@@ -120,7 +119,7 @@ dsp_error net_listen (struct dsp *dsp)
 dsp_error net_connect (char *address, struct connection **connection)
 {
     if (!(*connection = calloc(1, sizeof(struct connection)))) {
-        return error(DSP_E_SYSTEM);
+        return sys_error(DSP_E_SYSTEM, errno, "Failed to allocate connection object");
     }
     (*connection)->address = address;
     struct addrinfo *res, *rp;
@@ -142,14 +141,17 @@ dsp_error net_connect (char *address, struct connection **connection)
             freeaddrinfo(res);
             free(*connection);
             *connection = NULL;
-            return error(DSP_E_SYSTEM);
+            return sys_error(DSP_E_SYSTEM, errno,
+                    "Failed to close connection socket");
         }
     }
     if (!rp) {
         freeaddrinfo(res);
         free(*connection);
         *connection = NULL;
-        return error(DSP_E_NETWORK);
+        char *msg = NULL;
+        sprintf(msg, "Connection to <%s> failed", address);
+        return error(DSP_E_NETWORK, msg);
     }
     freeaddrinfo(res);
     // Initialize client thread
@@ -158,8 +160,7 @@ dsp_error net_connect (char *address, struct connection **connection)
     if (ret) {
         free(*connection);
         *connection = NULL;
-        //TODO: doesn't set errno
-        return error(DSP_E_SYSTEM);
+        return sys_error(DSP_E_SYSTEM, ret, "Failed to create connection thread");
     }
     return NULL;
 }
