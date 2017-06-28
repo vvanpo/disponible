@@ -68,7 +68,7 @@ static void *client (void *arg)
     return NULL;
 }
 
-static dsp_error handler (struct dsp *dsp, int client, struct sockaddr_in *client_address)
+static dsp_error handle (struct dsp *dsp, int client, struct sockaddr_in *client_address)
 {
     return NULL;
 }
@@ -109,7 +109,7 @@ dsp_error net_listen (struct dsp *dsp)
                     "Failed to accept connection");
         }
         dsp_error err;
-        if (err = handler(dsp, client, &client_address))
+        if (err = handle(dsp, client, &client_address))
             return trace(err);
     }
     return NULL;
@@ -162,5 +162,10 @@ dsp_error net_connect (char *address, struct connection **connection)
         *connection = NULL;
         return sys_error(DSP_E_SYSTEM, ret, "Failed to create connection thread");
     }
+    return NULL;
+}
+
+dsp_error net_disconnect (struct connection *connection)
+{
     return NULL;
 }

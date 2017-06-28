@@ -4,8 +4,10 @@
 #define _POSIX_C_SOURCE 200809L 
 
 #include <nacl/crypto_box.h>
+#include <nacl/crypto_secretbox.h>
 #include <pthread.h>
 #include <stddef.h>
+#include <stdint.h>
 #include "libdsp.h"
 
 #define HASH_LENGTH DSP_HASH_LENGTH
@@ -117,17 +119,24 @@ struct dsp {
         char *address,                      // network address in host:port form
         struct connection **connection      // OUT: the established connection
     );
+    dsp_error net_disconnect (struct connection *connection);
 
 // node.c
     struct node {
         unsigned char fingerprint[HASH_LENGTH];
         unsigned char public_key[PUBLIC_KEY_LENGTH];
         char *address;
+        unsigned char secret[crypto_secretbox_KEYBYTES];
+        uint32_t sequence;
     };
+
+// message.c
+
+
+// request.c
     dsp_error key_exchange (
         struct dsp *dsp,
-        char const *address,
-        struct node **node          // OUT: the returned node object
+        struct connection *connection
     );
     dsp_error find_node (
         struct dsp *dsp,
@@ -135,26 +144,7 @@ struct dsp {
         struct node **node          // OUT: the returned node object
     );
 
-/*
-// msg.c
-    // msg_find sends a message to the node(s) nearest to <hash>, requesting the
-    //      resource identified by <hash>.  The messaged nodes will propagate
-    //      the request through the network until a node owning the resource is
-    //      found.  The requested resource can itself be a node.
-    //  returns
-    //      a null-terminated array of node objects claiming to own the
-    //      requested resource.
-    struct node *msg_find (struct hash *hash, struct self *self);
-    void msg_send (void *payload, struct node *node, struct self *self);
-    // msg_handler takes an incoming message from <node> and decides how to
-    //      respond.
-    void msg_handler (void *message, struct node *node, struct dsp *);
+// response.c
 
-// net.c
-    // net_serve retrieves incoming messages and hands them off to msg_handler.
-    void net_serve (struct dsp *);
-    int net_send (void *message, char *address, struct dsp *);
 
-// node.c
-*/
 #endif
