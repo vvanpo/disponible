@@ -6,7 +6,7 @@
 #include <string.h>
 #include "dsp.h"
 
-#define SECRET_KEY_LENGTH crypto_box_SECRETKEYBYTES
+#define PRIVATE_KEY_LENGTH crypto_box_SECRETKEYBYTES
 
 // Hash functions
 
@@ -91,13 +91,16 @@ unsigned char *base64_decode (char *in, size_t *length)
 
 // Public-key crypto functions
 
-dsp_error new_keys (unsigned char **public, unsigned char **secret)
+dsp_error new_keypair (unsigned char **public, unsigned char **private)
 {
     *public = malloc(PUBLIC_KEY_LENGTH);
-    *secret = malloc(SECRET_KEY_LENGTH);
-    if (!*public || !*secret) return sys_error(DSP_E_SYSTEM, errno,
+    *private = malloc(PRIVATE_KEY_LENGTH);
+    if (!*public || !*private) return sys_error(DSP_E_SYSTEM, errno,
             "Failed to allocate key-pair");
-    crypto_box_keypair(*secret, *public);
+    crypto_box_keypair(*private, *public);
     return NULL;
 }
+
+// Secret-key crypto functions
+
 

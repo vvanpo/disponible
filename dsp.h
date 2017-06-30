@@ -13,17 +13,24 @@
 #define HASH_LENGTH DSP_HASH_LENGTH
 #define PUBLIC_KEY_LENGTH crypto_box_PUBLICKEYBYTES
 
-// The connection object describes a current connection with a node, or an
-//  on-going key-exchange process.
+// The connection object describes a current connection with a node.
 struct connection {
     pthread_t thread;           // thread handling this connection
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     int socket;
     char *address;
+    unsigned char key[crypto_secretbox_KEYBYTES];
+    uint32_t sequence;          // The sequence nonce increases monotonically,
+                                //  and is odd for the creator off the session
+                                //  key, and even for the other party.
+                                //  This way, out-of-order communication across
+                                //  message types means the nonce will never be
+                                //  re-used.
     struct node *node;          // node gets populated after key-exchange has
                                 //  taken place
-    void **request_buffer;
+    struct message *buffer;     // A null-terminated array of messages to be
+                                //  sent
     struct connection *next;    // The list is ordered in an LRU fasion
 };
 
@@ -100,7 +107,7 @@ struct dsp {
         char *base64_encode (void *in, size_t length);
         unsigned char *base64_decode (char *in, size_t *length);
     // Public-key crypto functions
-        dsp_error new_keys (unsigned char **public, unsigned char **secret);
+        dsp_error new_keypair (unsigned char **public, unsigned char **private);
 
 // db.c
     dsp_error db_open (struct db **);
@@ -126,12 +133,9 @@ struct dsp {
         unsigned char fingerprint[HASH_LENGTH];
         unsigned char public_key[PUBLIC_KEY_LENGTH];
         char *address;
-        unsigned char secret[crypto_secretbox_KEYBYTES];
-        uint32_t sequence;
     };
 
 // message.c
-
 
 // request.c
     dsp_error key_exchange (

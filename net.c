@@ -53,7 +53,7 @@ static void *client (void *arg)
     while (1) {
         // The client blocks until it is signalled that there is a request in
         //  its buffer
-        while (!conn->request_buffer) {
+        while (!conn->buffer) {
             if (ret = pthread_cond_wait(&conn->cond, &conn->mutex))
                 return sys_error(DSP_E_SYSTEM, ret, NULL);
         }
