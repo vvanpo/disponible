@@ -63,8 +63,7 @@ static dsp_error validate_schema (struct db *db)
         return err;
     }
     if (!i) {
-        if (err = create_schema(db))
-            return trace(err);
+        if (err = create_schema(db)) return err;
     }
     return NULL;
 }
@@ -88,10 +87,8 @@ dsp_error db_open (struct db **db) {
         return sys_error(DSP_E_SYSTEM, errno, NULL);
     if (ret = sqlite3_open(DB_NAME, &(*db)->conn))
         return db_error(ret, "Failed to open database");
-    if (err = validate_schema(*db))
-        return trace(err);
-    if (err = prepare_statements(*db))
-        return trace(err);
+    if (err = validate_schema(*db)) return err;
+    if (err = prepare_statements(*db)) return err;
     return NULL;
 }
 
@@ -147,7 +144,7 @@ dsp_error select_node (struct db *db, unsigned char *fingerprint, struct node **
     assert(strlen(res) == n);
     // Reset statement
     dsp_error err = reset_stmt(db, SELECT_NODE);
-    if (err) return trace(err);
+    if (err) return err;
     return NULL;
 }
 
@@ -167,7 +164,7 @@ dsp_error insert_node (struct db *db, struct node *node)
     if (ret != SQLITE_DONE) return db_error(ret, NULL);
     // Reset statement
     dsp_error err = reset_stmt(db, INSERT_NODE);
-    if (err) return trace(err);
+    if (err) return err;
     return NULL;
 }
 

@@ -40,6 +40,11 @@ static dsp_error parse_address (char *address, struct addrinfo **res)
     return NULL;
 }
 
+static dsp_error handshake (struct connection *conn)
+{
+    return NULL;
+}
+
 static dsp_error send_request (struct connection *conn)
 {
     return NULL;
@@ -62,7 +67,7 @@ static void *client (void *arg)
         if (err) {
             if (ret = pthread_mutex_unlock(&conn->mutex))
                 return sys_error(DSP_E_SYSTEM, ret, NULL);
-            return trace(err);
+            return err;
         }
     }
     return NULL;
@@ -109,8 +114,7 @@ dsp_error net_listen (struct dsp *dsp)
                     "Failed to accept connection");
         }
         dsp_error err;
-        if (err = handle(dsp, client, &client_address))
-            return trace(err);
+        if (err = handle(dsp, client, &client_address)) return err;
     }
     return NULL;
 }
@@ -128,7 +132,7 @@ dsp_error net_connect (char *address, struct connection **connection)
     if (err) {
         free(*connection);
         *connection = NULL;
-        return trace(err);
+        return err;
     }
     // Run through address list until connection succeeds
     for (rp = res; rp; rp = rp->ai_next) {
@@ -154,6 +158,7 @@ dsp_error net_connect (char *address, struct connection **connection)
         return error(DSP_E_NETWORK, msg);
     }
     freeaddrinfo(res);
+    if (err = handshake(*connection)) return err;
     // Initialize client thread
     int ret = pthread_create(&(*connection)->thread, NULL, client,
             *connection);

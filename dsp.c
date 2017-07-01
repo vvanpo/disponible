@@ -25,7 +25,7 @@ dsp_error dsp_init (char const *path, struct dsp **dsp)
         }
     }
     if (err = db_open(&(*dsp)->db)) {
-        log_error(err = trace(err));
+        log_error(err);
         return err;
     }
     int ret = pthread_create(&(*dsp)->listener, NULL,
@@ -40,7 +40,7 @@ dsp_error dsp_close (struct dsp *dsp)
 {
     //TODO: cancel threads
     dsp_error err = db_close(dsp->db);
-    if (err) return trace(err);
+    if (err) return err;
     free(dsp);
     return NULL;
 }

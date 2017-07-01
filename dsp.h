@@ -51,49 +51,13 @@ struct dsp {
 };
 
 // error.c
-#ifdef NDEBUG
-# define error(code, msg) new_error(code, msg)
-# define sys_error(code, err, msg) new_system_error(code, err, msg)
-# define db_error(err, msg) new_db_error(err, msg)
-# define trace(err) err
+#define error(code, msg) new_error(code, msg)
+#define sys_error(code, err, msg) new_system_error(code, err, msg)
+#define db_error(err, msg) new_db_error(err, msg)
     dsp_error new_error (int code, char const *message);
     dsp_error new_system_error (int code, int err, char const *message);
     dsp_error new_db_error (int err, char const *message);
-#else
-# define error(code, msg) new_error(code, msg, __func__, __FILE__, __LINE__)
-# define sys_error(code, err, msg) new_system_error(code, err, msg, __func__, __FILE__, __LINE__)
-# define db_error(err, msg) new_db_error(err, msg, __func__, __FILE__, __LINE__)
-# define trace(error) trace_error(error, __func__, __FILE__, __LINE__)
-    dsp_error new_error (
-        int code,
-        char const *message,
-        char const *function,
-        char const *file,
-        int line
-    );
-    dsp_error new_system_error (
-        int code,
-        int err,
-        char const *message,
-        char const *function,
-        char const *file,
-        int line
-    );
-    dsp_error new_db_error (
-        int err,
-        char const *message,
-        char const *function,
-        char const *file,
-        int line
-    );
-    dsp_error trace_error (
-        dsp_error error,
-        char const *function,
-        char const *file,
-        int line
-    );
-#endif
-    // Writes error message and trace to stderr.
+    // Writes error message to stderr.
     void log_error (dsp_error error);
 
 // crypto.c
