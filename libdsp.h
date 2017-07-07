@@ -37,9 +37,6 @@ void dsp_error_free (
 // Instance object 
 struct dsp;
 
-// Peer identifier
-struct dsp_node;
-
 // dsp_init initializes an instance of a dsp node at <directory>, creating a new
 //  node if one does not exist.
 dsp_error dsp_init (

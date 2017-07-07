@@ -86,11 +86,6 @@ struct dsp {
 
 // net.c
     dsp_error net_listen (struct dsp *dsp);
-    dsp_error net_connect (
-        char *address,                      // network address in host:port form
-        struct connection **connection      // OUT: the established connection
-    );
-    dsp_error net_disconnect (struct connection *connection);
 
 // node.c
     struct node {
@@ -99,13 +94,7 @@ struct dsp {
         char *address;
     };
 
-// message.c
-
 // request.c
-    dsp_error key_exchange (
-        struct dsp *dsp,
-        struct connection *connection
-    );
     dsp_error find_node (
         struct dsp *dsp,
         struct hash *fingerprint,   // the fingerprint to find

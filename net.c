@@ -40,16 +40,6 @@ static dsp_error parse_address (char *address, struct addrinfo **res)
     return NULL;
 }
 
-static dsp_error handshake (struct connection *conn)
-{
-    return NULL;
-}
-
-static dsp_error send_request (struct connection *conn)
-{
-    return NULL;
-}
-
 static void *client (void *arg)
 {
     struct connection *conn = arg;
