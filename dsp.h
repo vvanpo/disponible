@@ -3,6 +3,7 @@
 
 #define _POSIX_C_SOURCE 200809L 
 
+#include <nacl/crypto_sign.h>
 #include <nacl/crypto_box.h>
 #include <nacl/crypto_secretbox.h>
 #include <pthread.h>
@@ -13,27 +14,6 @@
 #define HASH_LENGTH DSP_HASH_LENGTH
 #define PUBLIC_KEY_LENGTH crypto_box_PUBLICKEYBYTES
 
-// The connection object describes a current connection with a node.
-struct connection {
-    pthread_t thread;           // thread handling this connection
-    pthread_mutex_t mutex;
-    pthread_cond_t cond;
-    int socket;
-    char *address;
-    unsigned char key[crypto_secretbox_KEYBYTES];
-    uint32_t sequence;          // The sequence nonce increases monotonically,
-                                //  and is odd for the creator off the session
-                                //  key, and even for the other party.
-                                //  This way, out-of-order communication across
-                                //  message types means the nonce will never be
-                                //  re-used.
-    struct node *node;          // node gets populated after key-exchange has
-                                //  taken place
-    struct message *buffer;     // A null-terminated array of messages to be
-                                //  sent
-    struct connection *next;    // The list is ordered in an LRU fasion
-};
-
 struct dsp {
     pthread_mutex_t mutex;
     unsigned char *public_key;
@@ -41,13 +21,8 @@ struct dsp {
     struct db *db;
     char *address;
     int port;
-    char *bootstrap_address;
-    // Each bucket contains a list of nodes with a currently-established
-    //  connection.
-    struct connection *bucket[HASH_LENGTH];
-    // A linked-list of open connections not tied to node objects
-    struct connection *connection;
     pthread_t listener;
+    struct session **session;
 };
 
 // error.c
@@ -86,13 +61,6 @@ struct dsp {
 
 // net.c
     dsp_error net_listen (struct dsp *dsp);
-
-// node.c
-    struct node {
-        unsigned char fingerprint[HASH_LENGTH];
-        unsigned char public_key[PUBLIC_KEY_LENGTH];
-        char *address;
-    };
 
 // request.c
     dsp_error find_node (
