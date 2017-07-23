@@ -3,29 +3,27 @@
 
 #define _POSIX_C_SOURCE 200809L 
 
-#include <nacl/crypto_sign.h>
-#include <nacl/crypto_box.h>
-#include <nacl/crypto_secretbox.h>
 #include <pthread.h>
 #include <stddef.h>
 #include <stdint.h>
 #include "libdsp.h"
 
 #define HASH_LENGTH DSP_HASH_LENGTH
-#define PUBLIC_KEY_LENGTH crypto_box_PUBLICKEYBYTES
 
 struct dsp {
     pthread_mutex_t mutex;
     unsigned char *public_key;
-    unsigned char *secret_key;
+    unsigned char *private_key;
     struct db *db;
     char *address;
-    int port;
+    uint16_t tcp_port;
+    uint16_t udp_port;
     pthread_t listener;
     struct session **session;
 };
 
 // error.c
+    typedef struct dsp_error error;
 #define error(code, msg) new_error(code, msg)
 #define sys_error(code, err, msg) new_system_error(code, err, msg)
 #define db_error(err, msg) new_db_error(err, msg)
@@ -37,16 +35,28 @@ struct dsp {
 
 // crypto.c
     // Hash functions
-        struct hash *hash (void *in, size_t length);
+        error hash (unsigned char *in, size_t length, char **out);
         // hash_distance computes the distance function between two hashes,
         //  i.e. returning the byte-index at which the two hashes begin to
         //  diverge.
-        int hash_distance (struct hash *from, struct hash *to);
+        int hash_distance (char *from, char *to);
     // Base-64 functions
-        char *base64_encode (void *in, size_t length);
-        unsigned char *base64_decode (char *in, size_t *length);
-    // Public-key crypto functions
-        dsp_error new_keypair (unsigned char **public, unsigned char **private);
+        error encode_base64 (unsigned char *in, size_t length, char **out);
+        error decode_base64 (char *in, size_t *length, unsigned char **out);
+    // Asymmetric crypto functions
+        error sign_keypair (
+            unsigned char **public_key,
+            unsigned char **private_key
+        );
+        error encrypt_keypair (
+            unsigned char **public_key,
+            unsigned char **private_key
+        );
+        error sign ();
+        error verify_sign ();
+        error encrypt ();
+        error decrypt ();
+    // Symmetric crypto functions
 
 // db.c
     dsp_error db_open (struct db **);
@@ -60,10 +70,10 @@ struct dsp {
     dsp_error update_node (struct db *db, struct node *node);
 
 // net.c
-    dsp_error net_listen (struct dsp *dsp);
+    error net_listen (struct dsp *dsp);
 
 // request.c
-    dsp_error find_node (
+    error lookup (
         struct dsp *dsp,
         struct hash *fingerprint,   // the fingerprint to find
         struct node **node          // OUT: the returned node object

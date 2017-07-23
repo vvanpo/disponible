@@ -6,13 +6,7 @@
 #include <string.h>
 #include "dsp.h"
 
-#define PRIVATE_KEY_LENGTH crypto_box_SECRETKEYBYTES
-
 // Hash functions
-
-struct hash {
-    unsigned char hash[HASH_LENGTH];
-};
 
 struct hash *hash (void *in, size_t length)
 {

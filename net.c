@@ -77,7 +77,7 @@ dsp_error net_listen (struct dsp *dsp)
     if (listener == -1) return sys_error(DSP_E_SYSTEM, errno,
             "Failed to open listener network socket");
     // Port in network order
-    uint16_t port = htons(dsp->port);
+    uint16_t port = htons(dsp->tcp_port);
     struct sockaddr_in address = {AF_INET, port, INADDR_ANY};
     if (bind(listener, (struct sockaddr *) &address,
                 sizeof(struct sockaddr_in)))
