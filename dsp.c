@@ -1,14 +1,14 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
+
 #include <sys/stat.h>
 #include <unistd.h>
-
 #include "dsp.h"
 
-dsp_error dsp_init (char const *path, struct dsp **dsp)
+error dsp_init (char const *path, struct dsp **dsp)
 {
-    dsp_error err;
+    error err;
     if (!(*dsp = calloc(1, sizeof(struct dsp)))) {
         err = sys_error(DSP_E_SYSTEM, errno, "Failed to allocate dsp instance");
         //TODO: log level in config
@@ -30,16 +30,14 @@ dsp_error dsp_init (char const *path, struct dsp **dsp)
     }
     int ret = pthread_create(&(*dsp)->listener, NULL,
             (void * (*)(void *)) net_listen, *dsp);
-    if (ret) {
-        return sys_error(DSP_E_SYSTEM, ret, "Failed to create listener");
-    }
+    if (ret) return sys_error(DSP_E_SYSTEM, ret, "Failed to create listener");
     return NULL;
 }
 
-dsp_error dsp_close (struct dsp *dsp)
+error dsp_close (struct dsp *dsp)
 {
     //TODO: cancel threads
-    dsp_error err = db_close(dsp->db);
+    error err = db_close(dsp->db);
     if (err) return err;
     free(dsp);
     return NULL;

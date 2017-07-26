@@ -1,11 +1,12 @@
 #ifndef DSP_H
 #define DSP_H
 
+#include <stddef.h>
+#include <stdint.h>
+
 #define _POSIX_C_SOURCE 200809L 
 
 #include <pthread.h>
-#include <stddef.h>
-#include <stdint.h>
 #include "libdsp.h"
 
 #define HASH_LENGTH DSP_HASH_LENGTH
@@ -35,7 +36,12 @@ struct dsp {
 
 // crypto.c
     // Hash functions
-        error hash (unsigned char *in, size_t length, char **out);
+        error hash (
+            unsigned char *in,
+            size_t length,      // The number of bytes to read from <in>
+            char *out           // Must point to a pre-allocated buffer of size
+                                //  HASH_LENGTH
+        );
         // hash_distance computes the distance function between two hashes,
         //  i.e. returning the byte-index at which the two hashes begin to
         //  diverge.
@@ -59,15 +65,15 @@ struct dsp {
     // Symmetric crypto functions
 
 // db.c
-    dsp_error db_open (struct db **);
-    dsp_error db_close (struct db *);
-    dsp_error select_node (
+    error db_open (struct db **);
+    error db_close (struct db *);
+    error select_node (
         struct db *db,
         unsigned char *fingerprint,
         struct node **node
     );
-    dsp_error insert_node (struct db *db, struct node *node);
-    dsp_error update_node (struct db *db, struct node *node);
+    error insert_node (struct db *db, struct node *node);
+    error update_node (struct db *db, struct node *node);
 
 // net.c
     error net_listen (struct dsp *dsp);
