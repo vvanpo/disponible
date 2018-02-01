@@ -10,13 +10,11 @@ SRCS:=$(SRCS:%=%.c)
 OBJ:=$(SRCS:%.c=%.o)
 
 debug: CFLAGS+=-g
-debug: all
+debug: dsp
 
 nodebug: CPPFLAGS+=-DNDEBUG
 nodebug: CFLAGS+=-O2
-nodebug: all
-
-all: dsp
+nodebug: dsp
 
 $(CLIENT_OBJ): libdsp.h client/client.h $(CLIENT_SRCS)
 	cd client && \
